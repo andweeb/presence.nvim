@@ -6,6 +6,18 @@ local DiscordRPC = require("presence.discord")
 
 function Presence:setup(options)
     options = options or {}
+    self.options = options
+
+    -- Initialize logger with provided options
+    self.log = Log {
+        level = options.log_level or vim.g.presence_log_level,
+    }
+
+    self.log:debug("Setting up plugin...")
+
+    -- Warn on any duplicate user-defined options
+    self:check_dup_options("auto_update")
+    self:check_dup_options("log_level")
 
     -- Ensure auto-update config is reflected in its global var setting
     if options.auto_update ~= nil or not vim.g.presence_auto_update then
@@ -15,12 +27,8 @@ function Presence:setup(options)
         vim.api.nvim_set_var("presence_auto_update", should_auto_update)
     end
 
-    -- Initialize logger with provided options
-    self.log = Log {
-        level = options.log_level or vim.g.presence_log_level,
-    }
-
-    self.log:debug("Setting up plugin...")
+    -- Set autocommands
+    vim.fn["presence#SetAutoCmds"]()
 
     -- Internal state
     self.is_connected = false
@@ -44,6 +52,19 @@ function Presence:setup(options)
     vim.api.nvim_set_var("presence_has_setup", 1)
 
     return self
+end
+
+-- Check and warn for duplicate user-defined options
+function Presence:check_dup_options(option)
+    local g_variable = "presence_"..option
+
+    if self.options[option] ~= nil and vim.g[g_variable] ~= nil then
+        local warning_fmt = "Duplicate options set: `g:%s` and setup option `%s`"
+        local warning_msg = string.format(warning_fmt, g_variable, option)
+
+        self.log:warn(warning_msg)
+    end
+
 end
 
 function Presence:connect(on_done)
