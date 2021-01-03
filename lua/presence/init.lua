@@ -195,6 +195,9 @@ function Presence:update_for_buffer(buffer)
         name, asset_key, description = unpack(files[extension])
     end
 
+    -- TODO: Update timestamp to be workspace-specific
+    local started_at = os.time()
+
     local activity = {
         state = string.format("Editing %s", filename),
         assets = {
@@ -204,7 +207,7 @@ function Presence:update_for_buffer(buffer)
             small_text = description or name,
         },
         timestamps = {
-            start = os.time(os.date("!*t"))
+            start = started_at
         },
     }
 
