@@ -15,7 +15,7 @@ Discord.events = {
     ERROR = "ERROR",
 }
 
-local struct = require("struct")
+local struct = require("deps.struct")
 
 -- Initialize a new Discord RPC client
 function Discord:new(options)

@@ -1,7 +1,8 @@
 local Presence = {}
 
-local Log = require("log")
+local Log = require("lib.log")
 local files = require("presence.files")
+local msgpack = require("deps.msgpack")
 local DiscordRPC = require("presence.discord")
 
 function Presence:setup(options)
@@ -54,6 +55,57 @@ function Presence:setup(options)
     return self
 end
 
+-- Send a nil activity to unset the presence
+function Presence:cancel_presence()
+    self.log:debug("Nullifying Discord presence...")
+
+    if not self.discord:is_connected() then
+        return
+    end
+
+    self.discord:set_activity(nil, function(err)
+        if err then
+            self.log:error("Failed to set nil activity in Discord: "..err)
+            return
+        end
+
+        self.log:info("Sent nil activity to Discord")
+    end)
+end
+
+-- Send command to cancel the presence for all other remote Neovim instances
+function Presence:cancel_all_remote_presences()
+    self:get_nvim_socket_addrs(function(sockets)
+        for i = 1, #sockets do
+            local nvim_socket = sockets[i]
+
+            -- Skip if the nvim socket is the current instance
+            if nvim_socket ~= vim.v.servername then
+                local command = "lua package.loaded.presence:cancel_presence()"
+                self:call_remote_nvim_instance(nvim_socket, command)
+            end
+        end
+    end)
+end
+
+-- Call a command on a remote Neovim instance at the provided IPC path
+function Presence:call_remote_nvim_instance(ipc_path, command)
+    local remote_nvim_instance = vim.loop.new_pipe(true)
+
+    remote_nvim_instance:connect(ipc_path, function()
+        self.log:debug(string.format("Connected to remote nvim instance at %s", ipc_path))
+
+        local packed = msgpack.pack({ 0, 0, "nvim_command", { command } })
+
+        remote_nvim_instance:write(packed, function()
+            self.log:debug(string.format("Wrote to remote nvim instance: %s", ipc_path))
+
+            remote_nvim_instance:shutdown()
+            remote_nvim_instance:close()
+        end)
+    end)
+end
+
 -- Check and warn for duplicate user-defined options
 function Presence:check_dup_options(option)
     local g_variable = "presence_"..option
@@ -64,7 +116,6 @@ function Presence:check_dup_options(option)
 
         self.log:warn(warning_msg)
     end
-
 end
 
 function Presence:connect(on_done)
@@ -154,6 +205,42 @@ function Presence.get_file_extension(path)
     return path:match("^.+%.(.+)$")
 end
 
+-- Get all active local nvim unix domain socket addresses
+function Presence:get_nvim_socket_addrs(on_done)
+    -- TODO: Find a better way to get paths of remote Neovim sockets lol
+    local cmd = [[netstat -u | grep --color=never "nvim.*/0" | awk -F "[ :]+" '{print $9}' | uniq]]
+
+    local sockets = {}
+    local function handle_data(_, data)
+        if not data then return end
+
+        for i = 1, #data do
+            local socket = data[i]
+            if socket ~= "" and socket ~= vim.v.servername then
+                table.insert(sockets, socket)
+            end
+        end
+    end
+
+    local function handle_error(_, data)
+        if not data then return end
+
+        if data[1] ~= "" then
+            self.log:error(data[1])
+        end
+    end
+
+    local function handle_exit()
+        on_done(sockets)
+    end
+
+    vim.fn.jobstart(cmd, {
+        on_stdout = handle_data,
+        on_stderr = handle_error,
+        on_exit = handle_exit,
+    })
+end
+
 -- Wrap calls to Discord that require prior connection and authorization
 function Presence.discord_event(on_ready)
     return function(self, ...)
@@ -181,6 +268,9 @@ end
 -- Update Rich Presence for the provided vim buffer
 function Presence:update_for_buffer(buffer)
     self.log:debug(string.format("Setting activity for %s...", buffer))
+
+    -- Send command to cancel presence for all remote Neovim instances
+    self:cancel_all_remote_presences()
 
     -- Parse vim buffer
     local filename = self.get_filename(buffer)
