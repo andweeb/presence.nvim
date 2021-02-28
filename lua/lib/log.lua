@@ -1,7 +1,6 @@
 local Log = {}
 
 Log.codes = {}
-
 Log.levels = {
     { "debug", "Comment" },
     { "info", "None" },
@@ -9,21 +8,10 @@ Log.levels = {
     { "error", "ErrorMsg" },
 }
 
-function Log.new(options)
-    options = options or {}
-
-    local logger = vim.deepcopy(Log)
-    logger.options = options
-    logger.options.level = options.level
-
-    return logger
+function Log:init(options)
+    self.level = options.level
+    return self
 end
-
-setmetatable(Log, {
-    __call = function(_, ...)
-        return Log.new(...)
-    end,
-})
 
 -- Initialize logger with log functions for each level
 for i = 1, #Log.levels do
@@ -33,7 +21,7 @@ for i = 1, #Log.levels do
 
     Log[level] = function(self, message)
         -- Skip if log level is not set or the log is below the configured or default level
-        if not self.options.level or self.codes[level] < self.codes[self.options.level] then
+        if not self.level or self.codes[level] < self.codes[self.level] then
             return
         end
 

@@ -18,11 +18,11 @@ Discord.events = {
 local struct = require("deps.struct")
 
 -- Initialize a new Discord RPC client
-function Discord:new(options)
+function Discord:init(options)
     self.log = options.logger
+    self.ipc_path = options.ipc_path
     self.client_id = options.client_id
 
-    self.ipc_path = self.find_ipc_path()
     self.pipe = vim.loop.new_pipe(true)
 
     return self
@@ -71,7 +71,7 @@ function Discord:call(opcode, payload, on_response)
 
                 on_response(err_message)
             else
-                self.log:debug("Successfully wrote message to pipe")
+                self.log:debug("Wrote message to pipe")
             end
         end)
     end)
@@ -149,34 +149,14 @@ function Discord:set_activity(activity, on_response)
     self:call(self.opcodes.frame, payload, on_response)
 end
 
--- Find the the IPC path in temporary runtime directories
-function Discord.find_ipc_path()
-    local env_vars = {
-        'TEMP',
-        'TMP',
-        'TMPDIR',
-        'XDG_RUNTIME_DIR',
-    }
-
-    for i = 1, #env_vars do
-        local var = env_vars[i]
-        local path = vim.loop.os_getenv(var)
-        if path then
-            return path
-        end
-    end
-
-    return nil
-end
-
 function Discord.generate_uuid()
-    local template ='xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'
+    local template ="xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx"
 
-    local uuid = template:gsub('[xy]', function(char)
-        local n = char == 'x'
+    local uuid = template:gsub("[xy]", function(char)
+        local n = char == "x"
             and math.random(0, 0xf)
             or math.random(8, 0xb)
-        return string.format('%x', n)
+        return string.format("%x", n)
     end)
 
     return uuid

@@ -1,18 +1,18 @@
 local Presence = {}
 
-local Log = require("lib.log")
+local log = require("lib.log")
 local files = require("presence.files")
 local msgpack = require("deps.msgpack")
-local DiscordRPC = require("presence.discord")
+local Discord = require("presence.discord")
 
 function Presence:setup(options)
     options = options or {}
     self.options = options
 
     -- Initialize logger with provided options
-    self.log = Log {
+    self.log = log:init({
         level = options.log_level or vim.g.presence_log_level,
-    }
+    })
 
     self.log:debug("Setting up plugin...")
 
@@ -42,8 +42,9 @@ function Presence:setup(options)
         self.client_id = options.client_id
     end
 
-    self.discord = DiscordRPC:new({
+    self.discord = Discord:init({
         client_id = self.client_id,
+        ipc_path = self.get_ipc_path(),
         logger = self.log,
     })
 
@@ -56,8 +57,8 @@ function Presence:setup(options)
 end
 
 -- Send a nil activity to unset the presence
-function Presence:cancel_presence()
-    self.log:debug("Nullifying Discord presence...")
+function Presence:cancel()
+    self.log:debug("Canceling Discord presence...")
 
     if not self.discord:is_connected() then
         return
@@ -74,14 +75,14 @@ function Presence:cancel_presence()
 end
 
 -- Send command to cancel the presence for all other remote Neovim instances
-function Presence:cancel_all_remote_presences()
+function Presence:cancel_all_remote_instances()
     self:get_nvim_socket_addrs(function(sockets)
         for i = 1, #sockets do
             local nvim_socket = sockets[i]
 
             -- Skip if the nvim socket is the current instance
             if nvim_socket ~= vim.v.servername then
-                local command = "lua package.loaded.presence:cancel_presence()"
+                local command = "lua package.loaded.presence:cancel()"
                 self:call_remote_nvim_instance(nvim_socket, command)
             end
         end
@@ -159,6 +160,26 @@ function Presence:authorize(on_done)
 
         if on_done then on_done() end
     end)
+end
+
+-- Find the the IPC path in temp runtime directories
+function Presence.get_ipc_path()
+    local env_vars = {
+        "TEMP",
+        "TMP",
+        "TMPDIR",
+        "XDG_RUNTIME_DIR",
+    }
+
+    for i = 1, #env_vars do
+        local var = env_vars[i]
+        local path = vim.loop.os_getenv(var)
+        if path then
+            return path
+        end
+    end
+
+    return nil
 end
 
 -- Gets the file path of the current vim buffer
@@ -270,7 +291,7 @@ function Presence:update_for_buffer(buffer)
     self.log:debug(string.format("Setting activity for %s...", buffer))
 
     -- Send command to cancel presence for all remote Neovim instances
-    self:cancel_all_remote_presences()
+    self:cancel_all_remote_instances()
 
     -- Parse vim buffer
     local filename = self.get_filename(buffer)
