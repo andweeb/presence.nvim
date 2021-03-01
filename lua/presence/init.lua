@@ -9,24 +9,27 @@ function Presence:setup(options)
     options = options or {}
     self.options = options
 
-    -- Initialize logger with provided options
-    self.log = log:init({
-        level = options.log_level or vim.g.presence_log_level,
-    })
+    -- Initialize logger
+    self:set_option("log_level", "warn", false)
+    self.log = log:init({ level = options.log_level })
+    self:check_dup_options("log_level")
+
+    -- Use the default or user-defined client id if provided
+    if options.client_id then
+        self.log:info("Using user-defined Discord client id")
+    end
+
+    self:set_option("auto_update", 1)
+    self:set_option("main_image", "neovim")
+    self:set_option("editing_text", "Editing %s")
+    self:set_option("workspace_text", "Working on %s")
+    self:set_option("neovim_image_text", "The One True Text Editor")
+    self:set_option("client_id", "793271441293967371")
 
     self.log:debug("Setting up plugin...")
 
-    -- Warn on any duplicate user-defined options
-    self:check_dup_options("auto_update")
-    self:check_dup_options("log_level")
-
     -- Ensure auto-update config is reflected in its global var setting
-    if options.auto_update ~= nil or not vim.g.presence_auto_update then
-        local should_auto_update = options.auto_update ~= nil
-            and (options.auto_update and 1 or 0)
-            or (vim.g.presence_auto_update or 1)
-        vim.api.nvim_set_var("presence_auto_update", should_auto_update)
-    end
+    vim.api.nvim_set_var("presence_auto_update", options.auto_update)
 
     -- Set autocommands
     vim.fn["presence#SetAutoCmds"]()
@@ -35,17 +38,10 @@ function Presence:setup(options)
     self.is_connected = false
     self.is_authorized = false
 
-    -- Use the default or user-defined client id if provided
-    self.client_id = "793271441293967371"
-    if options.client_id then
-        self.log:debug("Using user-defined Discord client id")
-        self.client_id = options.client_id
-    end
-
     self.discord = Discord:init({
-        client_id = self.client_id,
-        ipc_path = self.get_ipc_path(),
         logger = self.log,
+        client_id = options.client_id,
+        ipc_path = self.get_ipc_path(),
     })
 
     self.log:info("Completed plugin setup")
@@ -54,6 +50,39 @@ function Presence:setup(options)
     vim.api.nvim_set_var("presence_has_setup", 1)
 
     return self
+end
+
+-- Set option using either vim global or setup table
+function Presence:set_option(option, default, validate)
+    validate = validate == nil and true or validate
+
+    local g_variable = string.format("presence_%s", option)
+
+    -- Coalesce boolean options to integer 0 or 1
+    if type(self.options[option]) == "boolean" then
+        self.options[option] = self.options[option] and 1 or 0
+    end
+
+    if validate then
+        -- Warn on any duplicate user-defined options
+        self:check_dup_options(option)
+    end
+
+    self.options[option] = self.options[option] or
+        vim.g[g_variable] or
+        default
+end
+
+-- Check and warn for duplicate user-defined options
+function Presence:check_dup_options(option)
+    local g_variable = string.format("presence_%s", option)
+
+    if self.options[option] ~= nil and vim.g[g_variable] ~= nil then
+        local warning_fmt = "Duplicate options: `g:%s` and setup option `%s`"
+        local warning_msg = string.format(warning_fmt, g_variable, option)
+
+        self.log:warn(warning_msg)
+    end
 end
 
 -- Send a nil activity to unset the presence
@@ -105,18 +134,6 @@ function Presence:call_remote_nvim_instance(ipc_path, command)
             remote_nvim_instance:close()
         end)
     end)
-end
-
--- Check and warn for duplicate user-defined options
-function Presence:check_dup_options(option)
-    local g_variable = "presence_"..option
-
-    if self.options[option] ~= nil and vim.g[g_variable] ~= nil then
-        local warning_fmt = "Duplicate options set: `g:%s` and setup option `%s`"
-        local warning_msg = string.format(warning_fmt, g_variable, option)
-
-        self.log:warn(warning_msg)
-    end
 end
 
 function Presence:connect(on_done)
@@ -302,21 +319,28 @@ function Presence:update_for_buffer(buffer)
     local name = filename
     local asset_key = "file"
     local description = filename
-    if files[extension] then
-        name, asset_key, description = unpack(files[extension])
+    local file_asset = extension and files[extension] or files[filename]
+    if file_asset then
+        name, asset_key, description = unpack(file_asset)
     end
+
+    local file_text = description or name
+    local neovim_image_text = self.options.neovim_image_text
 
     -- TODO: Update timestamp to be workspace-specific
     local started_at = os.time()
 
+    local use_file_as_main_image = self.options.main_image == "file"
+    local assets = {
+        large_image = use_file_as_main_image and asset_key or "neovim",
+        large_text = use_file_as_main_image and file_text or neovim_image_text,
+        small_image = use_file_as_main_image and "neovim" or asset_key,
+        small_text = use_file_as_main_image and neovim_image_text or file_text,
+    }
+
     local activity = {
-        state = string.format("Editing %s", filename),
-        assets = {
-            large_image = "neovim",
-            large_text = "The One True Text Editor",
-            small_image = asset_key,
-            small_text = description or name,
-        },
+        state = string.format(self.options.editing_text, filename),
+        assets = assets,
         timestamps = {
             start = started_at
         },
@@ -326,7 +350,7 @@ function Presence:update_for_buffer(buffer)
     local project_name = self:get_project_name(parent_dirpath)
     if project_name then
         self.log:debug(string.format("Detected project: %s", project_name))
-        activity.details = string.format("Working on %s", project_name)
+        activity.details = string.format(self.options.workspace_text, project_name)
     else
         self.log:debug("No project detected")
     end
