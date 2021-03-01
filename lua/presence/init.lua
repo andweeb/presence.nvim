@@ -12,7 +12,6 @@ function Presence:setup(options)
     -- Initialize logger
     self:set_option("log_level", "warn", false)
     self.log = log:init({ level = options.log_level })
-    self:check_dup_options("log_level")
 
     -- Use the default or user-defined client id if provided
     if options.client_id then
@@ -338,8 +337,13 @@ function Presence:update_for_buffer(buffer)
         small_text = use_file_as_main_image and neovim_image_text or file_text,
     }
 
+    local editing_text = self.options.editing_text
+    editing_text = type(editing_text) == "function"
+        and editing_text(filename, buffer)
+        or string.format(editing_text, filename)
+
     local activity = {
-        state = string.format(self.options.editing_text, filename),
+        state = editing_text,
         assets = assets,
         timestamps = {
             start = started_at
@@ -350,7 +354,12 @@ function Presence:update_for_buffer(buffer)
     local project_name = self:get_project_name(parent_dirpath)
     if project_name then
         self.log:debug(string.format("Detected project: %s", project_name))
-        activity.details = string.format(self.options.workspace_text, project_name)
+
+        local workspace_text = self.options.workspace_text
+        activity.details = type(workspace_text) == "function"
+            and workspace_text(project_name, buffer)
+            or string.format(workspace_text, project_name)
+
     else
         self.log:debug("No project detected")
     end
