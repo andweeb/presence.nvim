@@ -10,7 +10,7 @@ function Presence:setup(options)
     self.options = options
 
     -- Initialize logger
-    self:set_option("log_level", "warn", false)
+    self:set_option("log_level", nil, false)
     self.log = log:init({ level = options.log_level })
 
     -- Use the default or user-defined client id if provided
