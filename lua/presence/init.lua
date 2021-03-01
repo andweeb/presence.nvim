@@ -1,9 +1,9 @@
 local Presence = {}
 
 local log = require("lib.log")
-local files = require("presence.files")
 local msgpack = require("deps.msgpack")
 local Discord = require("presence.discord")
+local file_assets = require("presence.file_assets")
 
 function Presence:setup(options)
     options = options or {}
@@ -319,7 +319,7 @@ function Presence:update_for_buffer(buffer)
     local name = filename
     local asset_key = "file"
     local description = filename
-    local file_asset = extension and files[extension] or files[filename]
+    local file_asset = extension and file_assets[extension] or file_assets[filename]
     if file_asset then
         name, asset_key, description = unpack(file_asset)
     end
