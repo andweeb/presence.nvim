@@ -350,18 +350,30 @@ function Presence:update_for_buffer(buffer)
         },
     }
 
-    -- Include project details if available
+    local workspace_text = self.options.workspace_text
     local project_name = self:get_project_name(parent_dirpath)
+
+    -- Include project details if available
     if project_name then
         self.log:debug(string.format("Detected project: %s", project_name))
 
-        local workspace_text = self.options.workspace_text
         activity.details = type(workspace_text) == "function"
             and workspace_text(project_name, buffer)
             or string.format(workspace_text, project_name)
-
     else
         self.log:debug("No project detected")
+
+        -- When no project is detected, set custom workspace text if:
+        -- * The custom function returns custom workspace text
+        -- * The configured workspace text does not contain a directive
+        if type(workspace_text) == "function" then
+            local custom_workspace_text = workspace_text(nil, buffer)
+            if custom_workspace_text then
+                activity.details = custom_workspace_text
+            end
+        elseif not workspace_text:find("%s") then
+            activity.details = workspace_text
+        end
     end
 
     self.discord:set_activity(activity, function(err)
