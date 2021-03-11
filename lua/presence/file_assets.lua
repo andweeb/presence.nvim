@@ -2,6 +2,8 @@
 return {
     COMMIT_EDITMSG = { "git", "git" },
     [".vimrc"] = { ".vimrc", "vim" },
+    addressbook = { "abook", "abook" },
+    abookrc = { "abook", "abook" },
     ahk = { "Autohotkey", "autohotkey" },
     applescript = { "Applescript", "applescript" },
     bash = { "Shell", "shell" },
@@ -51,5 +53,7 @@ return {
     vim = { "Vim", "vim" },
     viml = { "Vim", "vim" },
     vue = { "Vue", "vue" },
+    yaml = { "YAML", "yaml" },
+    yml = { "YAML", "yaml" },
     zsh = { "Shell", "shell" },
 }
