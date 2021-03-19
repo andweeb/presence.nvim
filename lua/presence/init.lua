@@ -7,6 +7,7 @@
 --                                              --
 --   Discord Rich Presence plugin for Neovim.   --
 --------------------------------------------------
+--
 -- Nvim peer-to-peer runtime state shape example:
 --
 -- Presence = {
@@ -18,6 +19,7 @@
 --     last_activity = {
 --         file = "/Users/user/Code/presence.nvim/README.md",
 --         workspace = "/Users/user/Code/presence.nvim",
+--         set_at = 1616033523,
 --     },
 --
 --     -- Other remote Neovim instances (peers)
@@ -46,6 +48,7 @@
 --
 --     ... other methods and member variables
 -- }
+--
 local Presence = {}
 Presence.is_authorized = false
 Presence.is_connected = false
@@ -496,7 +499,10 @@ Presence.update = Presence.discord_event(function(self, buffer, should_debounce)
     -- https://discord.com/developers/docs/rich-presence/how-to#updating-presence
     local last_updated_at = self.last_activity.set_at
     local debounce_timeout = self.options.debounce_timeout
-    local should_skip = should_debounce and debounce_timeout and
+    local should_skip =
+        should_debounce and
+        debounce_timeout and
+        self.last_activity.file == buffer and
         last_updated_at and os.time() - last_updated_at <= debounce_timeout
 
     if should_skip then
