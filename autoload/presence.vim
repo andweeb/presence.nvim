@@ -4,6 +4,8 @@ function presence#SetAutoCmds()
         autocmd!
         if exists("g:presence_auto_update") && g:presence_auto_update
             autocmd BufRead * lua package.loaded.presence:update()
+            autocmd TextChanged * lua package.loaded.presence:update(nil, true)
+            autocmd VimLeavePre * lua package.loaded.presence:unregister_self()
         endif
     augroup END
 endfunction

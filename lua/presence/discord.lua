@@ -149,13 +149,19 @@ function Discord:set_activity(activity, on_response)
     self:call(self.opcodes.frame, payload, on_response)
 end
 
-function Discord.generate_uuid()
+function Discord.generate_uuid(seed)
+    local index = 0
     local template ="xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx"
 
     local uuid = template:gsub("[xy]", function(char)
+        -- Increment an index to seed per char
+        index = index + 1
+        math.randomseed((seed or os.clock()) / index)
+
         local n = char == "x"
             and math.random(0, 0xf)
             or math.random(8, 0xb)
+
         return string.format("%x", n)
     end)
 

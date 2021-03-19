@@ -36,6 +36,7 @@ Presence = require("presence"):setup({
     main_image        = "neovim",                   -- Main image display (either "neovim" or "file")
     client_id         = "793271441293967371",       -- Use your own Discord application client id (not recommended)
     log_level         = nil,                        -- Log messages at or above this level (one of the following: "debug", "info", "warn", "error")
+    debounce_timeout  = 15,                         -- Number of seconds to debounce TextChanged events (or calls to `:lua Presence:update(<buf>, true)`)
 })
 ```
 
@@ -49,14 +50,18 @@ let g:presence_neovim_image_text = "The One True Text Editor"
 let g:presence_main_image        = "neovim"
 let g:presence_client_id         = "793271441293967371"
 let g:presence_log_level
+let g:presence_debounce_timeout  = 15
 ```
 
 ## Contributing
-Pull requests are very welcome! Here some open todo items:
+Pull requests are very welcome, feel free to open an issue! Here some open todo items:
+- [x] Manage workspace state across multiple nvim instances (e.g. tmux)
+- [x] Set activity on other autocommands (`TextChanged`, `VimLeavePre`)
+- [ ] Set idle activity (track using `CursorMoved`)
 - [ ] Use named pipes to support Windows
 - [ ] Expose file assets table as a configurable option
+- [ ] Manage activity properly in buffers in windows and tabs
 - [ ] Retry connection after initial setup or a closed pipe (i.e. after quitting Discord app)
 - [ ] Attempt to connect to a range of pipes from `discord-ipc-0` to `discord-ipc-9` (see [note](https://github.com/discord/discord-rpc/blob/master/documentation/hard-mode.md#notes))
-- [ ] Set activity on other autocommands (`:h events`)
 
 Discord asset additions and changes are also welcome! Supported file types can be found in [file_assets.lua](lua/presence/file_assets.lua) and their assets can be found [in this folder](https://www.dropbox.com/sh/j8913f0gav3toeh/AADxjn0NuTprGFtv3Il1Pqz-a?dl=0).
