@@ -515,6 +515,10 @@ Presence.update = Presence.discord_event(function(self, buffer, should_debounce)
         self:update_for_buffer(buffer, should_debounce)
     else
         self.get_current_buffer(function(current_buffer)
+            if not current_buffer or current_buffer == "" then
+                return self.log:debug("Current buffer not named, skipping...")
+            end
+
             self:update_for_buffer(current_buffer, should_debounce)
         end)
     end
