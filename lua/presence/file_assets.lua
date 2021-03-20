@@ -2,8 +2,8 @@
 return {
     COMMIT_EDITMSG = { "git", "git" },
     [".vimrc"] = { ".vimrc", "vim" },
-    addressbook = { "abook", "abook" },
     abookrc = { "abook", "abook" },
+    addressbook = { "abook", "abook" },
     ahk = { "Autohotkey", "autohotkey" },
     applescript = { "Applescript", "applescript" },
     bash = { "Shell", "shell" },
@@ -46,6 +46,7 @@ return {
     rs = { "Rust", "rust" },
     scala = { "Scala", "scala" },
     sh = { "Shell", "shell" },
+    svelte = { "Svelte", "svelte" },
     swift = { "Swift", "swift" },
     tex = { "TeX", "tex" },
     ts = { "TypeScript", "typescript" },
