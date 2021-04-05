@@ -392,13 +392,16 @@ function Presence:update_for_buffer(buffer, should_debounce)
     local extension = self.get_file_extension(filename)
     local parent_dirpath = self.get_dir_path(buffer)
 
+    self.log:debug(string.format("Parsed filename %s with %s extension", filename, extension or "no"))
+
     -- Determine image text and asset key
     local name = filename
-    local asset_key = "file"
+    local asset_key = "code"
     local description = filename
-    local file_asset = extension and file_assets[extension] or file_assets[filename]
+    local file_asset = file_assets[filename] or file_assets[extension]
     if file_asset then
         name, asset_key, description = unpack(file_asset)
+        self.log:debug(string.format("Using file asset: %s", vim.inspect(file_asset)))
     end
 
     local file_text = description or name
