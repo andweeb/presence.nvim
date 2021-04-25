@@ -20,10 +20,10 @@ local struct = require("deps.struct")
 -- Initialize a new Discord RPC client
 function Discord:init(options)
     self.log = options.logger
-    self.ipc_path = options.ipc_path
     self.client_id = options.client_id
+    self.ipc_socket = options.ipc_socket
 
-    self.pipe = vim.loop.new_pipe(true)
+    self.pipe = vim.loop.new_pipe(false)
 
     return self
 end
@@ -33,10 +33,10 @@ end
 -- https://github.com/discord/discord-rpc/blob/master/documentation/hard-mode.md#notes
 function Discord:connect(on_connect)
     if self.pipe:is_closing() then
-        self.pipe = vim.loop.new_pipe(true)
+        self.pipe = vim.loop.new_pipe(false)
     end
 
-    self.pipe:connect(self.ipc_path.."/discord-ipc-0", on_connect)
+    self.pipe:connect(self.ipc_socket, on_connect)
 end
 
 function Discord:is_connected()
@@ -142,7 +142,7 @@ function Discord:set_activity(activity, on_response)
         nonce = self.generate_uuid(),
         args = {
             activity = activity,
-            pid = vim.loop:getpid(),
+            pid = vim.loop:os_getpid(),
         },
     }
 

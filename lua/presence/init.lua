@@ -58,6 +58,14 @@ Presence.socket = vim.v.servername
 Presence.workspace = nil
 Presence.workspaces = {}
 
+-- Get the operating system name (eh should be good enough)
+-- http://www.lua.org/manual/5.3/manual.html#pdf-package.config
+local separator = package.config:sub(1,1)
+Presence.os = {
+    name = separator == [[\]] and "windows" or "unix",
+    path_separator = separator,
+}
+
 local log = require("lib.log")
 local msgpack = require("deps.msgpack")
 local serpent = require("deps.serpent")
@@ -90,7 +98,7 @@ function Presence:setup(options)
     self.discord = Discord:init({
         logger = self.log,
         client_id = options.client_id,
-        ipc_path = self.get_ipc_path(),
+        ipc_socket = self:get_discord_socket(),
     })
 
     -- Seed instance id using unique socket address
@@ -167,16 +175,16 @@ function Presence:cancel()
 end
 
 -- Call a command on a remote Neovim instance at the provided IPC path
-function Presence:call_remote_nvim_instance(ipc_path, command)
+function Presence:call_remote_nvim_instance(socket, command)
     local remote_nvim_instance = vim.loop.new_pipe(true)
 
-    remote_nvim_instance:connect(ipc_path, function()
-        self.log:debug(string.format("Connected to remote nvim instance at %s", ipc_path))
+    remote_nvim_instance:connect(socket, function()
+        self.log:debug(string.format("Connected to remote nvim instance at %s", socket))
 
         local packed = msgpack.pack({ 0, 0, "nvim_command", { command } })
 
         remote_nvim_instance:write(packed, function()
-            self.log:debug(string.format("Wrote to remote nvim instance: %s", ipc_path))
+            self.log:debug(string.format("Wrote to remote nvim instance: %s", socket))
         end)
     end)
 end
@@ -247,7 +255,13 @@ function Presence:authorize(on_done)
 end
 
 -- Find the the IPC path in temp runtime directories
-function Presence.get_ipc_path()
+function Presence:get_discord_socket()
+    local sock_name = "discord-ipc-0"
+
+    if self.os.name == "windows" then
+        return [[\\.\pipe\]]..sock_name
+    end
+
     local env_vars = {
         "TEMP",
         "TMP",
@@ -259,7 +273,7 @@ function Presence.get_ipc_path()
         local var = env_vars[i]
         local path = vim.loop.os_getenv(var)
         if path then
-            return path
+            return path..sock_name
         end
     end
 
@@ -292,17 +306,22 @@ function Presence:get_project_name(file_path)
         return nil
     end
 
-    return self.get_filename(project_path), project_path
+    -- Since git always uses forward slashes, replace with backslash in Windows
+    if self.os.name == "windows" then
+        project_path = project_path:gsub("/", [[\]])
+    end
+
+    return self.get_filename(project_path, self.os.path_separator), project_path
 end
 
 -- Get the name of the parent directory for the given path
-function Presence.get_dir_path(path)
-    return path:match("^(.+/.+)/.*$")
+function Presence.get_dir_path(path, path_separator)
+    return path:match(string.format("^(.+%s.+)%s.*$", path_separator, path_separator))
 end
 
 -- Get the name of the file for the given path
-function Presence.get_filename(path)
-    return path:match("^.+/(.+)$")
+function Presence.get_filename(path, path_separator)
+    return path:match(string.format("^.+%s(.+)$", path_separator))
 end
 
 -- Get the file extension for the given filename
@@ -312,21 +331,31 @@ end
 
 -- Get all active local nvim unix domain socket addresses
 function Presence:get_nvim_socket_addrs(on_done)
+    self.log:debug("Getting nvim socket addresses...")
+
     -- TODO: Find a better way to get paths of remote Neovim sockets lol
-    local cmd = table.concat({
-        "netstat -u",
-        [[grep --color=never "nvim.*/0"]],
-        [[awk -F "[ :]+" '{print $9}']],
-        "sort",
-        "uniq",
-    }, "|")
+    local commands = {
+        unix = table.concat({
+            "netstat -u",
+            [[grep --color=never "nvim.*/0"]],
+            [[awk -F "[ :]+" '{print $9}']],
+            "sort",
+            "uniq",
+        }, "|"),
+        windows = {
+            "powershell.exe",
+            "-Command",
+            [[(Get-ChildItem \\.\pipe\).FullName | findstr 'nvim']],
+        },
+    }
+    local cmd = commands[self.os.name]
 
     local sockets = {}
     local function handle_data(_, data)
         if not data then return end
 
         for i = 1, #data do
-            local socket = data[i]
+            local socket = vim.trim(data[i])
             if socket ~= "" and socket ~= self.socket then
                 table.insert(sockets, socket)
             end
@@ -342,6 +371,7 @@ function Presence:get_nvim_socket_addrs(on_done)
     end
 
     local function handle_exit()
+        self.log:debug(string.format("Got nvim socket addresses: %s", vim.inspect(sockets)))
         on_done(sockets)
     end
 
@@ -388,9 +418,9 @@ function Presence:update_for_buffer(buffer, should_debounce)
     self.log:debug(string.format("Setting activity for %s...", buffer))
 
     -- Parse vim buffer
-    local filename = self.get_filename(buffer)
+    local filename = self.get_filename(buffer, self.os.path_separator)
+    local parent_dirpath = self.get_dir_path(buffer, self.os.path_separator)
     local extension = self.get_file_extension(filename)
-    local parent_dirpath = self.get_dir_path(buffer)
 
     self.log:debug(string.format("Parsed filename %s with %s extension", filename, extension or "no"))
 
