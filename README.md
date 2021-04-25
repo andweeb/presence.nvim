@@ -1,4 +1,4 @@
-<img src="https://gist.githubusercontent.com/andweeb/df3216345530234289b87cf5080c2c60/raw/8de399cfed82c137f793e9f580027b5246bc4379/presence.nvim.png" height="120" alt="presence.nvim">&#x200B;
+<img src="https://gist.githubusercontent.com/andweeb/df3216345530234289b87cf5080c2c60/raw/8de399cfed82c137f793e9f580027b5246bc4379/presence.nvim.png" alt="presence.nvim">&#x200B;
 ===
 
 Discord [Rich Presence](https://discord.com/rich-presence) plugin for Neovim.
