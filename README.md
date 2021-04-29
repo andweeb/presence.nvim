@@ -1,12 +1,13 @@
 <img src="https://gist.githubusercontent.com/andweeb/df3216345530234289b87cf5080c2c60/raw/8de399cfed82c137f793e9f580027b5246bc4379/presence.nvim.png" alt="presence.nvim">&#x200B;
 ===
 
-Discord [Rich Presence](https://discord.com/rich-presence) plugin for Neovim.
+Discord [Rich Presence](https://discord.com/rich-presence) plugin for Neovim
 
 <img src="https://gist.githubusercontent.com/andweeb/df3216345530234289b87cf5080c2c60/raw/4b07351547ae9a6bfdcbc1f915889b90a5349242/presence-demo.gif" alt="demo.gif">
 
 ## Features
 * Simple and unobtrusive
+* Support for macOS, Linux, and Windows[\*](#notes)
 * No Python/Node providers (or CoC) required
 * Startup time is fast(er than other Rich Presence plugins, by [kind of a lot](https://github.com/andweeb/presence.nvim/wiki/Plugin-Comparisons))
 * Written in Lua and configurable in Lua (but also configurable in VimL if you want)
@@ -17,11 +18,13 @@ Use your favorite plugin manager
 * [vim-plug](https://github.com/junegunn/vim-plug): `Plug 'andweeb/presence.nvim'`
 
 #### Notes
-* Requires [Neovim nightly (v0.5)](https://github.com/neovim/neovim/releases/tag/nightly)
-* Linux and macOS is supported, but Windows is **WIP** ([help wanted!](#contributing))
+* Requires [Neovim nightly](https://github.com/neovim/neovim/releases/tag/nightly) (0.5)
+* Windows is partially supported
+    * Can update Rich Presence as expected
+    * Does not yet properly handle multiple running nvim instances
 
 ## Configuration
-Rich Presence works right out of the box after installation. To override default behaviors, configuration options are available in both Lua and VimL.
+Rich Presence works right out of the box after installation by default, so configuration is optional. For those that do want to override default behaviors, however, configuration options are available in both Lua and VimL.
 
 ### Lua
 Require the plugin and call `setup` with a config table with any of the following keys:
@@ -57,11 +60,12 @@ let g:presence_debounce_timeout  = 15
 Pull requests are very welcome, feel free to open an issue! Here some open todo items:
 - [x] Manage workspace state across multiple nvim instances (e.g. tmux)
 - [x] Set activity on other autocommands (`TextChanged`, `VimLeavePre`)
+- [x] Use named pipes to support Windows
 - [ ] Set idle activity (track using `CursorMoved`)
-- [ ] Use named pipes to support Windows
 - [ ] Expose file assets table as a configurable option
+- [ ] Fix peer-to-peer nvim instance communication in Windows
 - [ ] Manage activity properly in buffers in windows and tabs
 - [ ] Retry connection after initial setup or a closed pipe (i.e. after quitting Discord app)
 - [ ] Attempt to connect to a range of pipes from `discord-ipc-0` to `discord-ipc-9` (see [note](https://github.com/discord/discord-rpc/blob/master/documentation/hard-mode.md#notes))
 
-Discord asset additions and changes are also welcome! Supported file types can be found in [file_assets.lua](lua/presence/file_assets.lua) and their assets can be found [in this folder](https://www.dropbox.com/sh/j8913f0gav3toeh/AADxjn0NuTprGFtv3Il1Pqz-a?dl=0).
+Asset additions and changes are also welcome! Supported file types can be found in [`file_assets.lua`](lua/presence/file_assets.lua) and their assets can be found [in this folder](https://www.dropbox.com/sh/j8913f0gav3toeh/AADxjn0NuTprGFtv3Il1Pqz-a?dl=0).
