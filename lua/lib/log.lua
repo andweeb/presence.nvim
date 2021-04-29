@@ -26,8 +26,10 @@ for i = 1, #Log.levels do
         end
 
         vim.schedule(function()
+            local escaped_message = vim.fn.escape(message, '"'):gsub("\n", "\\n")
+
             vim.cmd(string.format("echohl %s", hl))
-            vim.cmd(string.format([[echom "[%s] %s"]], "presence.nvim", vim.fn.escape(message, '"')))
+            vim.cmd(string.format([[echom "[%s] %s"]], "presence.nvim", escaped_message))
             vim.cmd("echohl NONE")
         end)
     end
