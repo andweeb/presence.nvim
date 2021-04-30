@@ -95,7 +95,7 @@ function Presence:setup(options)
     self:set_option("debounce_timeout", 15)
 
     local discord_socket = self:get_discord_socket()
-    if discord_socket then
+    if not discord_socket then
         self.log:error("Failed to get Discord IPC socket")
     end
 
