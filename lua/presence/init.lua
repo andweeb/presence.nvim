@@ -94,11 +94,16 @@ function Presence:setup(options)
     self:set_option("client_id", "793271441293967371")
     self:set_option("debounce_timeout", 15)
 
+    local discord_socket = self:get_discord_socket()
+    if not discord_socket then
+        self.log:error("Failed to get Discord IPC socket")
+    end
+
     -- Initialize discord RPC client
     self.discord = Discord:init({
         logger = self.log,
         client_id = options.client_id,
-        ipc_socket = self:get_discord_socket(),
+        ipc_socket = discord_socket,
     })
 
     -- Seed instance id using unique socket address
@@ -273,7 +278,7 @@ function Presence:get_discord_socket()
         local var = env_vars[i]
         local path = vim.loop.os_getenv(var)
         if path then
-            return path..sock_name
+            return path:match("/$") and path..sock_name or path.."/"..sock_name
         end
     end
 
