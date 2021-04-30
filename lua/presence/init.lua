@@ -95,7 +95,7 @@ function Presence:setup(options)
     self:set_option("debounce_timeout", 15)
 
     local discord_socket = self:get_discord_socket()
-    if not discord_socket then
+    if discord_socket then
         self.log:error("Failed to get Discord IPC socket")
     end
 
@@ -278,6 +278,7 @@ function Presence:get_discord_socket()
         local var = env_vars[i]
         local path = vim.loop.os_getenv(var)
         if path then
+            self.log:debug(string.format("Using runtime path: %s", path))
             return path:match("/$") and path..sock_name or path.."/"..sock_name
         end
     end
