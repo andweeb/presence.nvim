@@ -171,11 +171,11 @@ function Presence:cancel()
 
     self.discord:set_activity(nil, function(err)
         if err then
-            self.log:error("Failed to set nil activity in Discord: "..err)
+            self.log:error(string.format("Failed to cancel activity in Discord: %s", err))
             return
         end
 
-        self.log:info("Sent nil activity to Discord")
+        self.log:info("Canceled Discord presence")
     end)
 end
 
@@ -391,6 +391,11 @@ end
 -- Wrap calls to Discord that require prior connection and authorization
 function Presence.discord_event(on_ready)
     return function(self, ...)
+        if not self.discord.ipc_socket then
+            self.log:debug("Discord IPC socket not found, skipping...")
+            return
+        end
+
         local args = {...}
         local callback = function() on_ready(self, unpack(args)) end
 
