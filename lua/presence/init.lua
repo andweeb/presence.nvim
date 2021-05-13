@@ -298,17 +298,26 @@ end
 
 -- Gets the current project name
 function Presence:get_project_name(file_path)
+    -- Escape quotes in the file path
+    file_path = file_path:gsub([["]], [[\"]])
+
     -- TODO: Only checks for a git repository, could add more checks here
     -- Might want to run this in a background process depending on performance
     local project_path_cmd = "git rev-parse --show-toplevel"
     project_path_cmd = file_path
-        and string.format("cd %s && %s", file_path, project_path_cmd)
+        and string.format([[cd "%s" && %s]], file_path, project_path_cmd)
         or project_path_cmd
 
     local project_path = vim.fn.system(project_path_cmd)
     project_path = vim.trim(project_path)
 
-    if #project_path == 0 or project_path:find("fatal.*") then
+    if project_path:find("fatal.*") then
+        self.log:info("Not a git repository, skipping...")
+        return nil
+    end
+    if vim.v.shell_error ~= 0 or #project_path == 0 then
+        local message_fmt = "Failed to get project name (error code %d): %s"
+        self.log:error(string.format(message_fmt, vim.v.shell_error, project_path))
         return nil
     end
 
@@ -469,6 +478,7 @@ function Presence:update_for_buffer(buffer, should_debounce)
         },
     }
 
+    self.log:debug(string.format("Getting project name for %s...", parent_dirpath))
     local workspace_text = self.options.workspace_text
     local project_name, project_path = self:get_project_name(parent_dirpath)
 
