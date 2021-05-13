@@ -120,7 +120,7 @@ return {
     svelte = { "Svelte", "svelte" },
     svg = { "SVG", "markup" },
     swift = { "Swift", "swift" },
-    tex = { "TeX", "tex" },
+    tex = { "LaTeX", "latex" },
     text = { "Text file", "text" },
     toml = { "TOML", "toml" },
     ts = { "TypeScript", "typescript" },
