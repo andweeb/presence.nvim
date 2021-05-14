@@ -1,3 +1,7 @@
 globals = {
-    'vim',
+    "vim",
+}
+
+exclude_files = {
+    "lua/deps",
 }

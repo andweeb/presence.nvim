@@ -1,8 +1,8 @@
 <img src="https://gist.githubusercontent.com/andweeb/df3216345530234289b87cf5080c2c60/raw/8de399cfed82c137f793e9f580027b5246bc4379/presence.nvim.png" alt="presence.nvim">&#x200B;
 
-**[Features](#features)** | **[Installation](#installation)** | **[Configuration](#configuration)** | **[Troubleshooting](#troubleshooting)** | **[Contributing](#contributing)**
+**[Features](#features)** | **[Installation](#installation)** | **[Configuration](#configuration)** | **[Troubleshooting](#troubleshooting)** | **[Development](#development)** | **[Contributing](#contributing)**
 
-> Discord [Rich Presence](https://discord.com/rich-presence) plugin for Neovim
+> Discord [Rich Presence](https://discord.com/rich-presence) plugin for [Neovim](https://neovim.io)
 
 <img src="https://gist.githubusercontent.com/andweeb/df3216345530234289b87cf5080c2c60/raw/4b07351547ae9a6bfdcbc1f915889b90a5349242/presence-demo.gif" alt="demo.gif">
 
@@ -15,8 +15,8 @@
 
 ## Installation
 Use your favorite plugin manager
-* [packer](https://github.com/wbthomason/packer.nvim): `use 'andweeb/presence.nvim'`
 * [vim-plug](https://github.com/junegunn/vim-plug): `Plug 'andweeb/presence.nvim'`
+* [packer.nvim](https://github.com/wbthomason/packer.nvim): `use 'andweeb/presence.nvim'`
 
 #### Notes
 * Requires [Neovim nightly](https://github.com/neovim/neovim/releases/tag/nightly) (0.5)
@@ -57,13 +57,19 @@ let g:presence_debounce_timeout  = 15
 
 ## Troubleshooting
 * Ensure that Discord is running
-* Ensure that your Neovim version is on v0.5
+* Ensure that your Neovim version is on 0.5
 * Ensure Game Activity is enabled in your Discord settings
 * Enable logging and inspect the logs after opening a buffer
-    * Set the `log_level` setup option or `g:presence_log_level` to `"debug"`
-    * Load a file and see the logs with `:messages`
+    * Set the [`log_level`](#lua) setup option or [`g:presence_log_level`](#viml) to `"debug"`
+    * Load a file and inspect the logs with `:messages`
 * If there is a `Failed to get Discord IPC socket` error, your particular OS may not yet be supported
-    * Create a [new issue](https://github.com/andweeb/presence.nvim/issues/new) if one does not exist for your OS yet
+    * If you don't see an existing [issue](https://github.com/andweeb/presence.nvim/issues) or [card](https://github.com/andweeb/presence.nvim/projects/1#column-14183588) for your OS, create a prefixed [issue](https://github.com/andweeb/presence.nvim/issues/new) (e.g. `[Void Linux]`)
+
+## Development
+* Clone the repo: `git clone https://github.com/andweeb/presence.nvim.git`
+* Enable [logging](#configuration) and ensure that `presence.nvim` is **_not_** in the list of vim plugins in your config
+* Run `nvim` with your local changes: `nvim --cmd 'set rtp+=path/to/your/local/presence.nvim' file.txt`
+* Ensure that there are no [luacheck](https://github.com/mpeterv/luacheck/) errors: `luacheck lua`
 
 ## Contributing
 Pull requests are very welcome, feel free to open an issue to work on any of the open [todo items](https://github.com/andweeb/presence.nvim/projects/1?add_cards_query=is%3Aopen)!
