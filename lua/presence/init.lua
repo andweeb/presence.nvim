@@ -466,6 +466,12 @@ function Presence:update_for_buffer(buffer, should_debounce)
     }
 
     local editing_text = self.options.editing_text
+    if vim.bo.modifiable then
+        editing_text = "Editing %s"
+    else
+        editing_text = "Reading %s"
+    end
+
     editing_text = type(editing_text) == "function"
         and editing_text(filename, buffer)
         or string.format(editing_text, filename)
