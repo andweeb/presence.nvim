@@ -71,6 +71,7 @@ local msgpack = require("deps.msgpack")
 local serpent = require("deps.serpent")
 local Discord = require("presence.discord")
 local file_assets = require("presence.file_assets")
+local file_trees = require("presence.file_trees")
 
 function Presence:setup(options)
     options = options or {}
@@ -466,8 +467,12 @@ function Presence:update_for_buffer(buffer, should_debounce)
     }
 
     local editing_text = self.options.editing_text
+    -- Perform special checks for status text
     if vim.bo.modifiable then
         editing_text = "Editing %s"
+    elseif file_trees[filename:match "[^%d]+"] then
+        editing_text = "Browsing %s"
+        filename = file_trees[filename:match "[^%d]+"] 
     else
         editing_text = "Reading %s"
     end
