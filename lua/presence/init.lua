@@ -348,10 +348,16 @@ end
 -- Get the status text for the current buffer
 function Presence.get_status_text(filename)
     if vim.bo.modifiable then
+        if vim.bo.filetype == "COMMIT_EDITMSG" then
+            return string.format("Committing changes")
+        end
         return string.format("Editing %s", filename)
     elseif file_trees[filename:match "[^%d]+"] then
         return string.format("Browsing %s", file_trees[filename:match "[^%d]+"])
     else
+        if vim.bo.filetype == "netrw" then
+            return string.format("Browsing Netrw")
+        end
         return string.format("Reading %s", filename)
     end
 end
