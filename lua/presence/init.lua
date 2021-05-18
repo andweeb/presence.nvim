@@ -72,6 +72,7 @@ local serpent = require("deps.serpent")
 local Discord = require("presence.discord")
 local file_assets = require("presence.file_assets")
 local file_trees = require("presence.file_trees")
+local plugin_managers = require("presence.plugin_managers")
 
 function Presence:setup(options)
     options = options or {}
@@ -88,9 +89,15 @@ function Presence:setup(options)
     end
 
     self:set_option("auto_update", 1)
-    self:set_option("main_image", "neovim")
-    self:set_option("editing_text", self.get_status_text)
+    -- Status texts
+    self:set_option("editing_text", "Editing %s")
+    self:set_option("reading_text", "Reading %s")
+    self:set_option("file_tree_text", "Browsing %s")
+    self:set_option("git_commit_text", "Committing changes")
+    self:set_option("plugin_manager_text", "Managing plugins")
     self:set_option("workspace_text", "Working on %s")
+
+    self:set_option("main_image", "neovim")
     self:set_option("neovim_image_text", "The One True Text Editor")
     self:set_option("client_id", "793271441293967371")
     self:set_option("debounce_timeout", 15)
@@ -347,18 +354,21 @@ end
 
 -- Get the status text for the current buffer
 function Presence.get_status_text(filename)
+    local so = self.options
     if vim.bo.modifiable and not vim.bo.readonly then
         if vim.bo.filetype == "gitcommit" then
-            return string.format("Committing changes")
+            return string.format(so.git_commit_text, filename)
         end
-        return string.format("Editing %s", filename)
-    elseif file_trees[filename:match "[^%d]+"] then
-        return string.format("Browsing %s", file_trees[filename:match "[^%d]+"])
+        return string.format(so.editing_text, filename)
     else
-        if vim.bo.filetype == "netrw" then
-            return string.format("Browsing Netrw")
+        if file_trees[filename:match "[^%d]+"] then
+            return string.format(so.file_tree_text, file_trees[filename:match "[^%d]+"])
+        elseif vim.bo.filetype == "netrw" then
+            return string.format(so.file_tree_text, "Netrw")
+        elseif plugin_managers[vim.bo.filetype] then
+            return string.format(so.plugin_manager_text, filename)
         end
-        return string.format("Reading %s", filename)
+        return string.format(so.reading_text, filename)
     end
 end
 
@@ -483,13 +493,14 @@ function Presence:update_for_buffer(buffer, should_debounce)
         small_text = use_file_as_main_image and neovim_image_text or file_text,
     }
 
-    local editing_text = self.options.editing_text
+    local status_text = self.get_status_text(filename)
+    --[[ local editing_text = self.options.editing_text
     editing_text = type(editing_text) == "function"
          and editing_text(filename, buffer)
-         or string.format(editing_text, filename)
+         or string.format(editing_text, filename) ]]
 
     local activity = {
-        state = editing_text,
+        state = status_text,
         assets = assets,
         timestamps = {
             start = activity_set_at,
