@@ -356,18 +356,18 @@ end
 function Presence.get_status_text(filename)
     if vim.bo.modifiable and not vim.bo.readonly then
         if vim.bo.filetype == "gitcommit" then
-            return string.format(options.git_commit_text, filename)
+            return string.format(self.options.git_commit_text, filename)
         end
-        return string.format(options.editing_text, filename)
+        return string.format(self.options.editing_text, filename)
     else
         if file_trees[filename:match "[^%d]+"] then
-            return string.format(options.file_tree_text, file_trees[filename:match "[^%d]+"])
+            return string.format(self.options.file_tree_text, file_trees[filename:match "[^%d]+"])
         elseif vim.bo.filetype == "netrw" then
-            return string.format(options.file_tree_text, "Netrw")
+            return string.format(self.options.file_tree_text, "Netrw")
         elseif plugin_managers[vim.bo.filetype] then
-            return string.format(options.plugin_manager_text, filename)
+            return string.format(self.options.plugin_manager_text, filename)
         end
-        return string.format(options.reading_text, filename)
+        return string.format(self.options.reading_text, filename)
     end
 end
 
