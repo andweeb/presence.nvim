@@ -484,7 +484,13 @@ function Presence:update_for_buffer(buffer, should_debounce)
     }
 
     local activity = {
-        state = self.get_status_text(filename),
+    local editing_text = self.options.editing_text
+    editing_text = type(editing_text) == "function"
+         and editing_text(filename, buffer)
+         or string.format(editing_text, filename)
+
+    local activity = {
+        state = editing_text,
         assets = assets,
         timestamps = {
             start = activity_set_at,
