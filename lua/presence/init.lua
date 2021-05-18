@@ -71,6 +71,7 @@ local msgpack = require("deps.msgpack")
 local serpent = require("deps.serpent")
 local Discord = require("presence.discord")
 local file_assets = require("presence.file_assets")
+local file_trees = require("presence.file_trees")
 
 function Presence:setup(options)
     options = options or {}
@@ -88,7 +89,7 @@ function Presence:setup(options)
 
     self:set_option("auto_update", 1)
     self:set_option("main_image", "neovim")
-    self:set_option("editing_text", "Editing %s")
+    self:set_option("editing_text", self.get_status_text)
     self:set_option("workspace_text", "Working on %s")
     self:set_option("neovim_image_text", "The One True Text Editor")
     self:set_option("client_id", "793271441293967371")
@@ -344,6 +345,23 @@ function Presence.get_file_extension(path)
     return path:match("^.+%.(.+)$")
 end
 
+-- Get the status text for the current buffer
+function Presence.get_status_text(filename)
+    if vim.bo.modifiable and not vim.bo.readonly then
+        if vim.bo.filetype == "gitcommit" then
+            return string.format("Committing changes")
+        end
+        return string.format("Editing %s", filename)
+    elseif file_trees[filename:match "[^%d]+"] then
+        return string.format("Browsing %s", file_trees[filename:match "[^%d]+"])
+    else
+        if vim.bo.filetype == "netrw" then
+            return string.format("Browsing Netrw")
+        end
+        return string.format("Reading %s", filename)
+    end
+end
+
 -- Get all active local nvim unix domain socket addresses
 function Presence:get_nvim_socket_addrs(on_done)
     self.log:debug("Getting nvim socket addresses...")
@@ -467,8 +485,8 @@ function Presence:update_for_buffer(buffer, should_debounce)
 
     local editing_text = self.options.editing_text
     editing_text = type(editing_text) == "function"
-        and editing_text(filename, buffer)
-        or string.format(editing_text, filename)
+         and editing_text(filename, buffer)
+         or string.format(editing_text, filename)
 
     local activity = {
         state = editing_text,
