@@ -90,13 +90,13 @@ function Presence:setup(options)
 
     self:set_option("auto_update", 1)
     -- Status texts
-    self:set_option("status_text", self.get_status_text)
     self:set_option("editing_text", "Editing %s")
     self:set_option("reading_text", "Reading %s")
-    self:set_option("file_tree_text", "Browsing %s")
     self:set_option("git_commit_text", "Committing changes")
+    self:set_option("file_tree_text", "Browsing %s")
     self:set_option("plugin_manager_text", "Managing plugins")
     self:set_option("workspace_text", "Working on %s")
+    self:set_option("status_text", self.get_status_text)
 
     self:set_option("main_image", "neovim")
     self:set_option("neovim_image_text", "The One True Text Editor")
@@ -366,7 +366,7 @@ function Presence.get_status_text(filename)
         elseif vim.bo.filetype == "netrw" then
             status_text = string.format(file_tree_text, "Netrw")
         elseif plugin_managers[vim.bo.filetype] then
-            status_text = string.format(plugin_manager_text, filenamereturn)
+            status_text = string.format(plugin_manager_text, filename)
         end
         status_text = string.format(reading_text, filename)
     end
