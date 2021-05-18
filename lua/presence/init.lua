@@ -355,20 +355,21 @@ end
 
 -- Get the status text for the current buffer
 function Presence.get_status_text(filename)
+    local status_text = self.options.status_text
     if vim.bo.modifiable and not vim.bo.readonly then
         if vim.bo.filetype == "gitcommit" then
-            status_text = string.format(git_commit_text, filename)
+            status_text = string.format(self.options.git_commit_text, filename)
         end
-        status_text = string.format(editing_text, filename)
+        status_text = string.format(self.options.editing_text, filename)
     else
         if file_trees[filename:match "[^%d]+"][1] then
-            status_text = string.format(file_tree_text, file_trees[filename:match "[^%d]+"][1])
+            status_text = string.format(self.options.file_tree_text, file_trees[filename:match "[^%d]+"][1])
         elseif vim.bo.filetype == "netrw" then
-            status_text = string.format(file_tree_text, "Netrw")
+            status_text = string.format(self.options.file_tree_text, "Netrw")
         elseif plugin_managers[vim.bo.filetype] then
-            status_text = string.format(plugin_manager_text, filename)
+            status_text = string.format(self.options.plugin_manager_text, filename)
         end
-        status_text = string.format(reading_text, filename)
+        status_text = string.format(self.options.reading_text, filename)
     end
 end
 
