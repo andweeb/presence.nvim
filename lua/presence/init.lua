@@ -90,13 +90,13 @@ function Presence:setup(options)
 
     self:set_option("auto_update", 1)
     -- Status texts
+    self:set_option("status_text", self.get_status_text)
     self:set_option("editing_text", "Editing %s")
     self:set_option("reading_text", "Reading %s")
     self:set_option("git_commit_text", "Committing changes")
     self:set_option("file_tree_text", "Browsing %s")
     self:set_option("plugin_manager_text", "Managing plugins")
     self:set_option("workspace_text", "Working on %s")
-    -- self:set_option("status_text", self.get_status_text)
 
     self:set_option("main_image", "neovim")
     self:set_option("neovim_image_text", "The One True Text Editor")
@@ -354,12 +354,17 @@ function Presence.get_file_extension(path)
 end
 
 -- Get the status text for the current buffer
-function Presence.get_status_text(filename)
+function Presence:get_status_text(filename)
+    -- For some reason setup isn't getting called properly
+    if (options == nil) then
+        return
+    end
     if vim.bo.modifiable and not vim.bo.readonly then
         if vim.bo.filetype == "gitcommit" then
             return string.format(self.options.git_commit_text, filename)
+	    else
+	        return string.format(self.options.editing_text, filename)
         end
-        return string.format(self.options.editing_text, filename)
     else
         if file_trees[filename:match "[^%d]+"] then
             return string.format(self.options.file_tree_text, file_trees[filename:match "[^%d]+"][1])
@@ -367,8 +372,9 @@ function Presence.get_status_text(filename)
             return string.format(self.options.file_tree_text, "Netrw")
         elseif plugin_managers[vim.bo.filetype] then
             return string.format(self.options.plugin_manager_text, filename)
+        else
+            return string.format(self.options.reading_text, filename)
         end
-        return string.format(self.options.reading_text, filename)
     end
 end
 
@@ -493,10 +499,7 @@ function Presence:update_for_buffer(buffer, should_debounce)
         small_text = use_file_as_main_image and neovim_image_text or file_text,
     }
 
-    local status_text = get_status_text(filename)
-    --[[ status_text = type(status_text) == "function"
-         and status_text(filename, buffer)
-         or string.format(status_text, filename) ]]
+    local status_text = self.options.status_text(filename, buffer)
 
     local activity = {
         state = status_text,
