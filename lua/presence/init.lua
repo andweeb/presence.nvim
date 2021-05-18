@@ -483,7 +483,6 @@ function Presence:update_for_buffer(buffer, should_debounce)
         small_text = use_file_as_main_image and neovim_image_text or file_text,
     }
 
-    local activity = {
     local editing_text = self.options.editing_text
     editing_text = type(editing_text) == "function"
          and editing_text(filename, buffer)
