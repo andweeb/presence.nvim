@@ -347,7 +347,7 @@ end
 
 -- Get the status text for the current buffer
 function Presence.get_status_text(filename)
-    if vim.bo.modifiable then
+    if vim.bo.modifiable and not vim.bo.readonly then
         if vim.bo.filetype == "gitcommit" then
             return string.format("Committing changes")
         end
