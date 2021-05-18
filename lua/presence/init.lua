@@ -31,7 +31,7 @@
 --         ["346750e6-c416-44ff-98f3-eb44ea2ef15d"] = {
 --             workspace = "/Users/user/Code/presence.nvim",
 --             socket = "/var/folders/mm/8qfxwcdn29s8d_rzmj7bqxb40000gn/T/nvim09n664/0",
---         }
+init.lua--         }
 --     },
 --
 --     -- Workspace states across all peers
@@ -362,7 +362,7 @@ function Presence.get_status_text(filename)
         status_text = string.format(self.options.editing_text, filename)
     else
         if file_trees[filename:match "[^%d]+"] then
-            status_text = string.format(self.options.file_tree_text, file_trees[filename:match "[^%d]+"])
+            status_text = string.format(self.options.file_tree_text, file_trees[filename:match "[^%d]+"][1])
         elseif vim.bo.filetype == "netrw" then
             status_text = string.format(self.options.file_tree_text, "Netrw")
         elseif plugin_managers[vim.bo.filetype] then
