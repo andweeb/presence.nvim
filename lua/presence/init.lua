@@ -90,7 +90,6 @@ function Presence:setup(options)
 
     self:set_option("auto_update", 1)
     -- Status texts
-    self:set_option("status_text", self.get_status_text)
     self:set_option("editing_text", "Editing %s")
     self:set_option("reading_text", "Reading %s")
     self:set_option("git_commit_text", "Committing changes")
