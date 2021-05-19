@@ -129,7 +129,6 @@ function Presence:setup(options)
 
     -- Set global variable to indicate plugin has been set up
     vim.api.nvim_set_var("presence_has_setup", 1)
-    self.log:debug(options)
 
     -- Register self to any remote Neovim instances
     self:register_self()
@@ -357,9 +356,9 @@ end
 function Presence:get_status_text(filename)
     if vim.bo.modifiable and not vim.bo.readonly then
         if vim.bo.filetype == "gitcommit" then
-	    return string.format(self.options.git_commit_text, filename)
-	else
-	    return string.format(self.options.editing_text, filename)
+            return string.format(self.options.git_commit_text, filename)
+        else
+            return string.format(self.options.editing_text, filename)
         end
     else
         if file_trees[filename:match "[^%d]+"] then
