@@ -130,6 +130,7 @@ function Presence:setup(options)
 
     -- Set global variable to indicate plugin has been set up
     vim.api.nvim_set_var("presence_has_setup", 1)
+    self.log:debug(options)
 
     -- Register self to any remote Neovim instances
     self:register_self()
@@ -355,19 +356,15 @@ end
 
 -- Get the status text for the current buffer
 function Presence:get_status_text(filename)
-    -- For some reason setup isn't getting called properly
-    if (options == nil) then
-        return
-    end
     if vim.bo.modifiable and not vim.bo.readonly then
         if vim.bo.filetype == "gitcommit" then
-            return string.format(self.options.git_commit_text, filename)
-	    else
-	        return string.format(self.options.editing_text, filename)
+	    return string.format(self.options.git_commit_text, filename)
+	else
+	    return string.format(self.options.editing_text, filename)
         end
     else
         if file_trees[filename:match "[^%d]+"] then
-            return string.format(self.options.file_tree_text, file_trees[filename:match "[^%d]+"][1])
+            return string.format(self.options.file_tree_text, file_trees[filename:match "[^%d]+"])
         elseif vim.bo.filetype == "netrw" then
             return string.format(self.options.file_tree_text, "Netrw")
         elseif plugin_managers[vim.bo.filetype] then
@@ -499,7 +496,7 @@ function Presence:update_for_buffer(buffer, should_debounce)
         small_text = use_file_as_main_image and neovim_image_text or file_text,
     }
 
-    local status_text = self.options.status_text(filename, buffer)
+    local status_text = self:get_status_text(filename, buffer)
 
     local activity = {
         state = status_text,
