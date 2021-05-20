@@ -23,36 +23,50 @@ Use your favorite plugin manager
 * Windows is [partially supported](https://github.com/andweeb/presence.nvim/projects/1#card-60537963), WSL is [not yet supported](https://github.com/andweeb/presence.nvim/projects/1#card-60537961)
 
 ## Configuration
-Rich Presence works right out of the box after installation, so configuration is optional. For those that do want to override default behaviors, however, configuration options are available in either Lua or VimL.
+Rich Presence works right out of the box after installation, so configuration is **optional**! For those that do want to override default behaviors, however, configuration options are available in either Lua or VimL.
 
 ### Lua
 Require the plugin and call `setup` with a config table with any of the following keys:
 
 ```lua
-Presence = require("presence"):setup({
-    -- This config table shows all available config options with their default values
-    auto_update       = true,                       -- Update activity based on autocmd events (if `false`, map or manually execute `:lua Presence:update()`)
-    editing_text      = "Editing %s",               -- Editing format string (either string or function(filename: string|nil, buffer: string): string)
-    workspace_text    = "Working on %s",            -- Workspace format string (either string or function(git_project_name: string|nil, buffer: string): string)
-    neovim_image_text = "The One True Text Editor", -- Text displayed when hovered over the Neovim image
-    main_image        = "neovim",                   -- Main image display (either "neovim" or "file")
-    client_id         = "793271441293967371",       -- Use your own Discord application client id (not recommended)
-    log_level         = nil,                        -- Log messages at or above this level (one of the following: "debug", "info", "warn", "error")
-    debounce_timeout  = 15,                         -- Number of seconds to debounce TextChanged events (or calls to `:lua Presence:update(<buf>, true)`)
+-- The setup config table shows all available config options with their default values:
+require("presence"):setup({
+    -- General options
+    auto_update         = true,                       -- Update activity based on autocmd events (if `false`, map or manually execute `:lua package.loaded.presence:update()`)
+    neovim_image_text   = "The One True Text Editor", -- Text displayed when hovered over the Neovim image
+    main_image          = "neovim",                   -- Main image display (either "neovim" or "file")
+    client_id           = "793271441293967371",       -- Use your own Discord application client id (not recommended)
+    log_level           = nil,                        -- Log messages at or above this level (one of the following: "debug", "info", "warn", "error")
+    debounce_timeout    = 15,                         -- Number of seconds to debounce TextChanged events (or calls to `:lua package.loaded.presence:update(<filename>, true)`)
+
+    -- Rich Presence text options
+    editing_text        = "Editing %s",               -- Format string rendered when an editable file is loaded in the buffer
+    file_tree_text      = "Browsing %s"               -- Format string rendered when browsing a file tree
+    git_commit_text     = "Committing changes"        -- Format string rendered when commiting changes in git
+    plugin_manager_text = "Managing plugins"          -- Format string rendered when managing plugins
+    reading_text        = "Reading %s"                -- Format string rendered when a read-only or unmodifiable file is loaded in the buffer
+    workspace_text      = "Working on %s",            -- Workspace format string (either string or function(git_project_name: string|nil, buffer: string): string)
 })
 ```
 
 ### VimL
 Or if global variables are more your thing, you can use any of the following instead:
 ```viml
-let g:presence_auto_update       = 1
-let g:presence_editing_text      = "Editing %s"
-let g:presence_workspace_text    = "Working on %s"
-let g:presence_neovim_image_text = "The One True Text Editor"
-let g:presence_main_image        = "neovim"
-let g:presence_client_id         = "793271441293967371"
+" General options
+let g:presence_auto_update         = 1
+let g:presence_neovim_image_text   = "The One True Text Editor"
+let g:presence_main_image          = "neovim"
+let g:presence_client_id           = "793271441293967371"
 let g:presence_log_level
-let g:presence_debounce_timeout  = 15
+let g:presence_debounce_timeout    = 15
+
+" Rich Presence text options
+let g:presence_editing_text        = "Editing %s"
+let g:presence_file_tree_text      = "Browsing %s"
+let g:presence_git_commit_text     = "Committing changes"
+let g:presence_plugin_manager_text = "Managing plugins"
+let g:presence_reading_text        = "Reading %s"
+let g:presence_workspace_text      = "Working on %s"
 ```
 
 ## Troubleshooting
