@@ -91,9 +91,10 @@ function Presence:setup(options)
     -- General options
     self:set_option("auto_update", 1)
     self:set_option("client_id", "793271441293967371")
-    self:set_option("debounce_timeout", 15)
+    self:set_option("debounce_timeout", 10)
     self:set_option("main_image", "neovim")
     self:set_option("neovim_image_text", "The One True Text Editor")
+    self:set_option("enable_line_number", false)
     -- Status text options
     self:set_option("editing_text", "Editing %s")
     self:set_option("file_explorer_text", "Browsing %s")
@@ -101,6 +102,7 @@ function Presence:setup(options)
     self:set_option("plugin_manager_text", "Managing plugins")
     self:set_option("reading_text", "Reading %s")
     self:set_option("workspace_text", "Working on %s")
+    self:set_option("line_number_text", "Line %s out of %s")
 
     local discord_socket = self:get_discord_socket()
     if not discord_socket then
@@ -459,12 +461,10 @@ end
 
 -- Update Rich Presence for the provided vim buffer
 function Presence:update_for_buffer(buffer, should_debounce)
-    if should_debounce and self.last_activity.file == buffer then
-        self.log:debug(string.format("Activity already set for %s, skipping...", buffer))
-        return
-    end
 
     local activity_set_at = os.time()
+    -- If we shouldn't debounce and we trigger an activity, keep this value the same. Otherwise set it to the current time.
+    local relative_activity_set_at = should_debounce and self.last_activity.relative_set_at or os.time()
 
     self.log:debug(string.format("Setting activity for %s...", buffer))
 
@@ -502,16 +502,21 @@ function Presence:update_for_buffer(buffer, should_debounce)
         state = status_text,
         assets = assets,
         timestamps = {
-            start = activity_set_at,
+            start = relative_activity_set_at,
         },
     }
 
-    self.log:debug(string.format("Getting project name for %s...", parent_dirpath))
+    if not self.options.enable_line_number then
+        self.log:debug("Getting line number for current buffer...")
+    else
+        self.log:debug(string.format("Getting project name for %s...", parent_dirpath))
+    end
+
     local workspace_text = self.options.workspace_text
     local project_name, project_path = self:get_project_name(parent_dirpath)
 
-    -- Include project details if available
-    if project_name then
+    -- Include project details if available and if the user hasn't set the enable_line_number option
+    if project_name and self.options.enable_line_number == 0 then
         self.log:debug(string.format("Detected project: %s", project_name))
 
         activity.details = type(workspace_text) == "function"
@@ -522,6 +527,7 @@ function Presence:update_for_buffer(buffer, should_debounce)
         self.last_activity = {
             file = buffer,
             set_at = activity_set_at,
+            relative_set_at = relative_activity_set_at,
             workspace = project_path,
         }
 
@@ -536,6 +542,24 @@ function Presence:update_for_buffer(buffer, should_debounce)
                 updated_at = activity_set_at,
             }
         end
+    elseif self.options.enable_line_number == 1 then
+
+        local line_number = vim.api.nvim_win_get_cursor(0)[1]
+        local line_count = vim.api.nvim_buf_line_count(0)
+        local line_number_text = self.options.line_number_text
+
+        activity.details = type(line_number_text) == "function"
+	    and line_number_text(line_number, line_count)
+	    or string.format(line_number_text, line_number, line_count)
+
+        self.workspace = nil
+        self.last_activity = {
+            file = buffer,
+            set_at = activity_set_at,
+            relative_set_at = relative_activity_set_at,
+            workspace = nil,
+        }
+
     else
         self.log:debug("No project detected")
 
@@ -543,6 +567,7 @@ function Presence:update_for_buffer(buffer, should_debounce)
         self.last_activity = {
             file = buffer,
             set_at = activity_set_at,
+            relative_set_at = relative_activity_set_at,
             workspace = nil,
         }
 
@@ -577,14 +602,13 @@ Presence.update = Presence.discord_event(function(self, buffer, should_debounce)
     -- Default update to not debounce by default
     if should_debounce == nil then should_debounce = false end
 
-    -- Debounce Rich Presence updates (default to 15 seconds):
+    -- Debounce Rich Presence updates (default to 10 seconds):
     -- https://discord.com/developers/docs/rich-presence/how-to#updating-presence
     local last_updated_at = self.last_activity.set_at
     local debounce_timeout = self.options.debounce_timeout
     local should_skip =
         should_debounce and
         debounce_timeout and
-        self.last_activity.file == buffer and
         last_updated_at and os.time() - last_updated_at <= debounce_timeout
 
     if should_skip then
