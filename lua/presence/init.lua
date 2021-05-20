@@ -549,8 +549,8 @@ function Presence:update_for_buffer(buffer, should_debounce)
         local line_number_text = self.options.line_number_text
 
         activity.details = type(line_number_text) == "function"
-	    and line_number_text(line_number, line_count)
-	    or string.format(line_number_text, line_number, line_count)
+        and line_number_text(line_number, line_count)
+        or string.format(line_number_text, line_number, line_count)
 
         self.workspace = nil
         self.last_activity = {

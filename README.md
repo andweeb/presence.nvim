@@ -47,7 +47,7 @@ require("presence"):setup({
     plugin_manager_text = "Managing plugins"          -- Format string rendered when managing plugins
     reading_text        = "Reading %s"                -- Format string rendered when a read-only or unmodifiable file is loaded in the buffer
     workspace_text      = "Working on %s",            -- Workspace format string (either string or function(git_project_name: string|nil, buffer: string): string)
-	line_number_text    = "Line %s out of %s",        -- Line number format string (for when enable_line_number is set to true)
+    line_number_text    = "Line %s out of %s",        -- Line number format string (for when enable_line_number is set to true)
 })
 ```
 
