@@ -361,7 +361,7 @@ function Presence:get_status_text(filename)
             return string.format(self.options.editing_text, filename)
         end
     else
-    	  local file_tree = file_trees[filename:match "[^%d]+"]
+        local file_tree = file_trees[filename:match "[^%d]+"]
         if file_tree then
             return string.format(self.options.file_tree_text, file_tree)
         elseif vim.bo.filetype == "netrw" then
