@@ -41,7 +41,7 @@ require("presence"):setup({
 
     -- Rich Presence text options
     editing_text        = "Editing %s",               -- Format string rendered when an editable file is loaded in the buffer
-    file_tree_text      = "Browsing %s"               -- Format string rendered when browsing a file tree
+    file_explorer_text  = "Browsing %s"               -- Format string rendered when browsing a file explorer
     git_commit_text     = "Committing changes"        -- Format string rendered when commiting changes in git
     plugin_manager_text = "Managing plugins"          -- Format string rendered when managing plugins
     reading_text        = "Reading %s"                -- Format string rendered when a read-only or unmodifiable file is loaded in the buffer
@@ -62,7 +62,7 @@ let g:presence_debounce_timeout    = 15
 
 " Rich Presence text options
 let g:presence_editing_text        = "Editing %s"
-let g:presence_file_tree_text      = "Browsing %s"
+let g:presence_file_explorer_text  = "Browsing %s"
 let g:presence_git_commit_text     = "Committing changes"
 let g:presence_plugin_manager_text = "Managing plugins"
 let g:presence_reading_text        = "Reading %s"

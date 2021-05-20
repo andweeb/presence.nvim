@@ -71,7 +71,7 @@ local msgpack = require("deps.msgpack")
 local serpent = require("deps.serpent")
 local Discord = require("presence.discord")
 local file_assets = require("presence.file_assets")
-local file_trees = require("presence.file_trees")
+local file_explorers = require("presence.file_explorers")
 local plugin_managers = require("presence.plugin_managers")
 
 function Presence:setup(options)
@@ -96,7 +96,7 @@ function Presence:setup(options)
     self:set_option("neovim_image_text", "The One True Text Editor")
     -- Status text options
     self:set_option("editing_text", "Editing %s")
-    self:set_option("file_tree_text", "Browsing %s")
+    self:set_option("file_explorer_text", "Browsing %s")
     self:set_option("git_commit_text", "Committing changes")
     self:set_option("plugin_manager_text", "Managing plugins")
     self:set_option("reading_text", "Reading %s")
@@ -361,13 +361,14 @@ function Presence:get_status_text(filename)
             return string.format(self.options.editing_text, filename)
         end
     else
-        local file_tree = file_trees[filename:match "[^%d]+"]
-        if file_tree then
-            return string.format(self.options.file_tree_text, file_tree)
-        elseif vim.bo.filetype == "netrw" then
-            return string.format(self.options.file_tree_text, "Netrw")
-        elseif plugin_managers[vim.bo.filetype] then
-            return string.format(self.options.plugin_manager_text, filename)
+        local file_explorer = file_explorers[vim.bo.filetype:match "[^%d]+"]
+            or file_explorers[filename:match "[^%d]+"]
+        local plugin_manager = plugin_managers[vim.bo.filetype]
+
+        if file_explorer then
+            return string.format(self.options.file_explorer_text, file_explorer)
+        elseif plugin_manager then
+            return string.format(self.options.plugin_manager_text, plugin_manager)
         else
             return string.format(self.options.reading_text, filename)
         end
