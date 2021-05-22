@@ -463,7 +463,8 @@ end
 function Presence:update_for_buffer(buffer, should_debounce)
 
     local activity_set_at = os.time()
-    -- If we shouldn't debounce and we trigger an activity, keep this value the same. Otherwise set it to the current time.
+    -- If we shouldn't debounce and we trigger an activity, keep this value the same.
+    -- Otherwise set it to the current time.
     local relative_activity_set_at = should_debounce and self.last_activity.relative_set_at or os.time()
 
     self.log:debug(string.format("Setting activity for %s...", buffer))
@@ -507,7 +508,7 @@ function Presence:update_for_buffer(buffer, should_debounce)
     }
 
     -- Get the current line number and line count if the user has set the enable_line_number option
-    if self.options.enable_line_number then
+    if self.options.enable_line_number == 1 then
         self.log:debug("Getting line number for current buffer...")
 
         local line_number = vim.api.nvim_win_get_cursor(0)[1]
