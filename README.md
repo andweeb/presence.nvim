@@ -37,7 +37,8 @@ require("presence"):setup({
     main_image          = "neovim",                   -- Main image display (either "neovim" or "file")
     client_id           = "793271441293967371",       -- Use your own Discord application client id (not recommended)
     log_level           = nil,                        -- Log messages at or above this level (one of the following: "debug", "info", "warn", "error")
-    debounce_timeout    = 15,                         -- Number of seconds to debounce TextChanged events (or calls to `:lua package.loaded.presence:update(<filename>, true)`)
+    debounce_timeout    = 10,                         -- Number of seconds to debounce events (or calls to `:lua package.loaded.presence:update(<filename>, true)`)
+    enable_line_number  = false,                      -- Displays the current line number instead of the current project
 
     -- Rich Presence text options
     editing_text        = "Editing %s",               -- Format string rendered when an editable file is loaded in the buffer
@@ -46,6 +47,7 @@ require("presence"):setup({
     plugin_manager_text = "Managing plugins"          -- Format string rendered when managing plugins
     reading_text        = "Reading %s"                -- Format string rendered when a read-only or unmodifiable file is loaded in the buffer
     workspace_text      = "Working on %s",            -- Workspace format string (either string or function(git_project_name: string|nil, buffer: string): string)
+    line_number_text    = "Line %s out of %s",        -- Line number format string (for when enable_line_number is set to true)
 })
 ```
 
@@ -58,7 +60,8 @@ let g:presence_neovim_image_text   = "The One True Text Editor"
 let g:presence_main_image          = "neovim"
 let g:presence_client_id           = "793271441293967371"
 let g:presence_log_level
-let g:presence_debounce_timeout    = 15
+let g:presence_debounce_timeout    = 10
+let g:presence_enable_line_number  = 0
 
 " Rich Presence text options
 let g:presence_editing_text        = "Editing %s"
@@ -67,6 +70,7 @@ let g:presence_git_commit_text     = "Committing changes"
 let g:presence_plugin_manager_text = "Managing plugins"
 let g:presence_reading_text        = "Reading %s"
 let g:presence_workspace_text      = "Working on %s"
+let g:presence_line_number_text    = "Line %s out of %s"
 ```
 
 ## Troubleshooting
