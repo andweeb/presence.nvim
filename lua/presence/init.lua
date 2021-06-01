@@ -51,6 +51,7 @@
 --
 local Presence = {}
 Presence.is_authorized = false
+Presence.is_authorizing = false
 Presence.is_connected = false
 Presence.last_activity = {}
 Presence.peers = {}
@@ -259,7 +260,13 @@ end
 function Presence:authorize(on_done)
     self.log:debug("Authorizing with Discord...")
 
+    -- Track authorization state to avoid race conditions
+    -- (Discord rejects when multiple auth requests are sent at once)
+    self.is_authorizing = true
+
     self.discord:authorize(function(err, response)
+        self.is_authorizing = false
+
         if err and err:find(".*already did handshake.*") then
             self.log:info("Already authorized with Discord")
             self.is_authorized = true
@@ -449,16 +456,27 @@ function Presence.discord_event(on_ready)
         end
 
         local args = {...}
-        local callback = function() on_ready(self, unpack(args)) end
+        local callback = function()
+            on_ready(self, unpack(args))
+        end
 
+        -- Call Discord if already connected and authorized
         if self.is_connected and self.is_authorized then
             return callback()
         end
 
+        -- Schedule event if currently authorizing with Discord
+        if self.is_authorizing then
+            self.log:debug("Currently authorizing with Discord, scheduling callback for later...")
+            return vim.schedule(callback)
+        end
+
+        -- Authorize if connected but not yet authorized yet
         if self.is_connected and not self.is_authorized then
             return self:authorize(callback)
         end
 
+        -- Connect and authorize plugin with Discord
         self:connect(function()
             if self.is_authorized then
                 return callback()
@@ -483,7 +501,7 @@ function Presence:update_for_buffer(buffer, should_debounce)
     -- Otherwise set it to the current time.
     local relative_activity_set_at = should_debounce and self.last_activity.relative_set_at or os.time()
 
-    self.log:debug(string.format("Setting activity for %s...", buffer))
+    self.log:debug(string.format("Setting activity for %s...", buffer and #buffer > 0 and buffer or "unnamed buffer"))
 
     -- Parse vim buffer
     local filename = self.get_filename(buffer, self.os.path_separator)
