@@ -120,6 +120,7 @@ function Presence:setup(options)
     local seed_nums = {}
     self.socket:gsub(".", function(c) table.insert(seed_nums, c:byte()) end)
     self.id = self.discord.generate_uuid(tonumber(table.concat(seed_nums)) / os.clock())
+    self.log:debug(string.format("Using id %s", self.id))
 
     -- Ensure auto-update config is reflected in its global var setting
     vim.api.nvim_set_var("presence_auto_update", options.auto_update)
@@ -138,16 +139,23 @@ function Presence:setup(options)
     return self
 end
 
+-- To ensure consistent option values, coalesce true and false values to 1 and 0
+function Presence.coalesce_option(value)
+    if type(value) == "boolean" then
+        return value and 1 or 0
+    end
+
+    return value
+end
+
 -- Set option using either vim global or setup table
 function Presence:set_option(option, default, validate)
+    default = self.coalesce_option(default)
     validate = validate == nil and true or validate
 
     local g_variable = string.format("presence_%s", option)
 
-    -- Coalesce boolean options to integer 0 or 1
-    if type(self.options[option]) == "boolean" then
-        self.options[option] = self.options[option] and 1 or 0
-    end
+    self.options[option] = self.coalesce_option(self.options[option])
 
     if validate then
         -- Warn on any duplicate user-defined options
@@ -297,17 +305,17 @@ function Presence:get_discord_socket()
 end
 
 -- Gets the file path of the current vim buffer
-function Presence.get_current_buffer(on_buffer)
-    vim.schedule(function()
-        local current_buffer = vim.api.nvim_get_current_buf()
-        local buffer = vim.api.nvim_buf_get_name(current_buffer)
-
-        on_buffer(buffer)
-    end)
+function Presence.get_current_buffer()
+    local current_buffer = vim.api.nvim_get_current_buf()
+    return vim.api.nvim_buf_get_name(current_buffer)
 end
 
 -- Gets the current project name
 function Presence:get_project_name(file_path)
+    if not file_path then
+        return nil
+    end
+
     -- Escape quotes in the file path
     file_path = file_path:gsub([["]], [[\"]])
 
@@ -356,24 +364,26 @@ end
 
 -- Get the status text for the current buffer
 function Presence:get_status_text(filename)
+    local file_explorer = file_explorers[vim.bo.filetype:match "[^%d]+"]
+        or file_explorers[(filename or ""):match "[^%d]+"]
+    local plugin_manager = plugin_managers[vim.bo.filetype]
+
+    if file_explorer then
+        return string.format(self.options.file_explorer_text, file_explorer)
+    elseif plugin_manager then
+        return string.format(self.options.plugin_manager_text, plugin_manager)
+    end
+
+    if not filename or filename == "" then return nil end
+
     if vim.bo.modifiable and not vim.bo.readonly then
         if vim.bo.filetype == "gitcommit" then
             return string.format(self.options.git_commit_text, filename)
-        else
+        elseif filename then
             return string.format(self.options.editing_text, filename)
         end
-    else
-        local file_explorer = file_explorers[vim.bo.filetype:match "[^%d]+"]
-            or file_explorers[filename:match "[^%d]+"]
-        local plugin_manager = plugin_managers[vim.bo.filetype]
-
-        if file_explorer then
-            return string.format(self.options.file_explorer_text, file_explorer)
-        elseif plugin_manager then
-            return string.format(self.options.plugin_manager_text, plugin_manager)
-        else
-            return string.format(self.options.reading_text, filename)
-        end
+    elseif filename then
+        return string.format(self.options.reading_text, filename)
     end
 end
 
@@ -461,6 +471,12 @@ end
 
 -- Update Rich Presence for the provided vim buffer
 function Presence:update_for_buffer(buffer, should_debounce)
+    -- Avoid unnecessary updates if the previous activity was for the current buffer
+    -- (allow same-buffer updates when line numbers are enabled)
+    if self.options.enable_line_number == 0 and self.last_activity.file == buffer then
+        self.log:debug(string.format("Activity already set for %s, skipping...", buffer))
+        return
+    end
 
     local activity_set_at = os.time()
     -- If we shouldn't debounce and we trigger an activity, keep this value the same.
@@ -472,7 +488,7 @@ function Presence:update_for_buffer(buffer, should_debounce)
     -- Parse vim buffer
     local filename = self.get_filename(buffer, self.os.path_separator)
     local parent_dirpath = self.get_dir_path(buffer, self.os.path_separator)
-    local extension = self.get_file_extension(filename)
+    local extension = filename and self.get_file_extension(filename) or nil
 
     self.log:debug(string.format("Parsed filename %s with %s extension", filename, extension or "no"))
 
@@ -498,6 +514,9 @@ function Presence:update_for_buffer(buffer, should_debounce)
     }
 
     local status_text = self:get_status_text(filename)
+    if not status_text then
+        return self.log:debug("No status text for the given buffer, skipping...")
+    end
 
     local activity = {
         state = status_text,
@@ -521,6 +540,7 @@ function Presence:update_for_buffer(buffer, should_debounce)
 
         self.workspace = nil
         self.last_activity = {
+            id = self.id,
             file = buffer,
             set_at = activity_set_at,
             relative_set_at = relative_activity_set_at,
@@ -544,6 +564,7 @@ function Presence:update_for_buffer(buffer, should_debounce)
 
             self.workspace = project_path
             self.last_activity = {
+                id = self.id,
                 file = buffer,
                 set_at = activity_set_at,
                 relative_set_at = relative_activity_set_at,
@@ -567,6 +588,7 @@ function Presence:update_for_buffer(buffer, should_debounce)
 
             self.workspace = nil
             self.last_activity = {
+                id = self.id,
                 file = buffer,
                 set_at = activity_set_at,
                 relative_set_at = relative_activity_set_at,
@@ -588,8 +610,10 @@ function Presence:update_for_buffer(buffer, should_debounce)
     end
 
     -- Sync activity to all peers
+    self.log:debug("Sync activity to all peers...")
     self:sync_self_activity()
 
+    self.log:debug("Setting Discord activity...")
     self.discord:set_activity(activity, function(err)
         if err then
             self.log:error("Failed to set activity in Discord: "..err)
@@ -623,15 +647,15 @@ Presence.update = Presence.discord_event(function(self, buffer, should_debounce)
     if buffer then
         self:update_for_buffer(buffer, should_debounce)
     else
-        self.get_current_buffer(function(current_buffer)
-            if not current_buffer or current_buffer == "" then
-                return self.log:debug("Current buffer not named, skipping...")
-            end
-
-            self:update_for_buffer(current_buffer, should_debounce)
+        vim.schedule(function()
+            self:update_for_buffer(self.get_current_buffer(), should_debounce)
         end)
     end
 end)
+
+--------------------------------------------------
+-- Presence peer-to-peer API
+--------------------------------------------------
 
 -- Register some remote peer
 function Presence:register_peer(id, socket)
@@ -810,6 +834,86 @@ function Presence:stop()
     self.log:debug("Disconnecting from Discord...")
     self.discord:disconnect(function()
         self.log:info("Disconnected from Discord")
+    end)
+end
+
+--------------------------------------------------
+-- Presence event handlers
+--------------------------------------------------
+
+-- FocusGained events force-update the presence for the current buffer unless it's a quickfix window
+function Presence:handle_focus_gained()
+    self.log:debug("Handling FocusGained event...")
+
+    if vim.bo.filetype == "qf" then
+        self.log:debug("Skipping presence update for quickfix window...")
+        return
+    end
+
+    self:update()
+end
+
+-- TextChanged events debounce current buffer presence updates
+function Presence:handle_text_changed()
+    self.log:debug("Handling TextChanged event...")
+    self:update(nil, true)
+end
+
+-- VimLeavePre events unregister the leaving instance to all peers and sets activity for the first peer
+function Presence:handle_vim_leave_pre()
+    self.log:debug("Handling VimLeavePre event...")
+    self:unregister_self()
+end
+
+-- WinEnter events force-update the current buffer presence unless it's a quickfix window
+function Presence:handle_win_enter()
+    self.log:debug("Handling WinEnter event...")
+
+    vim.schedule(function()
+        if vim.bo.filetype == "qf" then
+            self.log:debug("Skipping presence update for quickfix window...")
+            return
+        end
+
+        self:update()
+    end)
+end
+
+-- WinLeave events cancel the current buffer presence
+function Presence:handle_win_leave()
+    self.log:debug("Handling WinLeave event...")
+
+    local current_window = vim.api.nvim_get_current_win()
+
+    vim.schedule(function()
+        -- Avoid canceling presence when switching to a quickfix window
+        if vim.bo.filetype == "qf" then
+            self.log:debug("Not canceling presence due to switching to quickfix window...")
+            return
+        end
+
+        -- Avoid canceling presence when switching between windows
+        if current_window ~= vim.api.nvim_get_current_win() then
+            self.log:debug("Not canceling presence due to switching to a window within the same instance...")
+            return
+        end
+
+        self.log:debug("Canceling presence due to leaving window...")
+        self:cancel()
+    end)
+end
+
+-- WinLeave events cancel the current buffer presence
+function Presence:handle_buf_add()
+    self.log:debug("Handling BufAdd event...")
+
+    vim.schedule(function()
+        if vim.bo.filetype == "qf" then
+            self.log:debug("Skipping presence update for quickfix window...")
+            return
+        end
+
+        self:update()
     end)
 end
 
