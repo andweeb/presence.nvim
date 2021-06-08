@@ -8,6 +8,7 @@ function presence#SetAutoCmds()
             autocmd VimLeavePre * lua package.loaded.presence:handle_vim_leave_pre()
             autocmd WinEnter * lua package.loaded.presence:handle_win_enter()
             autocmd WinLeave * lua package.loaded.presence:handle_win_leave()
+            autocmd BufEnter * lua package.loaded.presence:handle_buf_enter()
             autocmd BufAdd * lua package.loaded.presence:handle_buf_add()
         endif
     augroup END

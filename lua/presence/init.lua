@@ -863,6 +863,13 @@ end
 function Presence:handle_focus_gained()
     self.log:debug("Handling FocusGained event...")
 
+    -- Skip a potentially extraneous update call on initial startup if tmux is being used
+    -- (See https://github.com/neovim/neovim/issues/14572)
+    if next(self.last_activity) == nil and os.getenv("TMUX") then
+        self.log:debug("Skipping presence update for FocusGained event triggered by tmux...")
+        return
+    end
+
     if vim.bo.filetype == "qf" then
         self.log:debug("Skipping presence update for quickfix window...")
         return
@@ -919,6 +926,18 @@ function Presence:handle_win_leave()
         self.log:debug("Canceling presence due to leaving window...")
         self:cancel()
     end)
+end
+
+-- BufEnter events force-update the presence for the current buffer unless it's a quickfix window
+function Presence:handle_buf_enter()
+    self.log:debug("Handling BufEnter event...")
+
+    if vim.bo.filetype == "qf" then
+        self.log:debug("Skipping presence update for quickfix window...")
+        return
+    end
+
+    self:update()
 end
 
 -- WinLeave events cancel the current buffer presence
