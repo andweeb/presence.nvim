@@ -62,8 +62,11 @@ Presence.workspaces = {}
 -- Get the operating system name (eh should be good enough)
 -- http://www.lua.org/manual/5.3/manual.html#pdf-package.config
 local separator = package.config:sub(1,1)
+local wsl_distro_name = os.getenv("WSL_DISTRO_NAME")
 Presence.os = {
     name = separator == [[\]] and "windows" or "unix",
+    wsl_distro_name = wsl_distro_name,
+    is_wsl = wsl_distro_name ~= nil,
     path_separator = separator,
 }
 
@@ -82,7 +85,13 @@ function Presence:setup(options)
     -- Initialize logger
     self:set_option("log_level", nil, false)
     self.log = log:init({ level = options.log_level })
-    self.log:debug("Setting up plugin...")
+
+    -- Print setup message with OS information
+    local setup_message_fmt = "Setting up plugin for %s"
+    local setup_message = self.os.is_wsl
+        and string.format(setup_message_fmt.." in WSL (%s)", self.os.name, self.os.wsl_distro_name)
+        or string.format(setup_message_fmt, self.os.name)
+    self.log:debug(setup_message)
 
     -- Use the default or user-defined client id if provided
     if options.client_id then
@@ -105,19 +114,23 @@ function Presence:setup(options)
     self:set_option("workspace_text", "Working on %s")
     self:set_option("line_number_text", "Line %s out of %s")
 
-    local discord_socket = self:get_discord_socket()
-    if not discord_socket then
-        self.log:error("Failed to get Discord IPC socket")
+    -- Get and check discord socket path
+    local discord_socket_path = self:get_discord_socket_path()
+    if discord_socket_path then
+        self.log:debug(string.format("Using Discord IPC socket path: %s", discord_socket_path))
+        self:check_discord_socket(discord_socket_path)
+    else
+        self.log:error("Failed to determine Discord IPC socket path")
     end
 
     -- Initialize discord RPC client
     self.discord = Discord:init({
         logger = self.log,
         client_id = options.client_id,
-        ipc_socket = discord_socket,
+        ipc_socket = discord_socket_path,
     })
 
-    -- Seed instance id using unique socket address
+    -- Seed instance id using unique socket path
     local seed_nums = {}
     self.socket:gsub(".", function(c) table.insert(seed_nums, c:byte()) end)
     self.id = self.discord.generate_uuid(tonumber(table.concat(seed_nums)) / os.clock())
@@ -178,6 +191,28 @@ function Presence:check_dup_options(option)
 
         self.log:warn(warning_msg)
     end
+end
+
+-- Check the Discord socket at the given path
+function Presence:check_discord_socket(path)
+    self.log:debug(string.format("Checking Discord IPC socket at %s...", path))
+
+    -- Asynchronously check socket path via stat
+    vim.loop.fs_stat(path, function(err, stats)
+        if err then
+            local err_msg = "Failed to get socket information"
+            self.log:error(string.format("%s: %s", err_msg, err))
+            return
+        end
+
+        if stats.type ~= "socket" then
+            local warning_msg = "Found unexpected Discord IPC socket type"
+            self.log:warn(string.format("%s: %s", warning_msg, err))
+            return
+        end
+
+        self.log:debug(string.format("Checked Discord IPC socket, looks good!", msg_prefix))
+    end)
 end
 
 -- Send a nil activity to unset the presence
@@ -284,31 +319,45 @@ function Presence:authorize(on_done)
     end)
 end
 
--- Find the the IPC path in temp runtime directories
-function Presence:get_discord_socket()
+-- Find the Discord socket from temp runtime directories
+function Presence:get_discord_socket_path()
     local sock_name = "discord-ipc-0"
+    local sock_path = nil
+    local sock_stats = nil
 
-    if self.os.name == "windows" then
-        return [[\\.\pipe\]]..sock_name
-    end
+    if self.os.is_wsl then
+        -- Use socket created by relay for WSL
+        sock_path = "/var/run/"..sock_name
+    elseif self.os.name == "windows" then
+        -- Use named pipe in NPFS for Windows
+        sock_path = [[\\.\pipe\]]..sock_name
+    else
+        -- Use tmpdir for Unix
+        local tmpdir = vim.loop.os_tmpdir()
+        if tmpdir and vim.loop.fs_stat(tmpdir..sock_name) then
+            sock_path = tmpdir..sock_name
+        else
+            -- Fallback to manually trying various temp directory environment variables
+            local env_vars = {
+                "TEMP",
+                "TMP",
+                "TMPDIR",
+                "XDG_RUNTIME_DIR",
+            }
 
-    local env_vars = {
-        "TEMP",
-        "TMP",
-        "TMPDIR",
-        "XDG_RUNTIME_DIR",
-    }
-
-    for i = 1, #env_vars do
-        local var = env_vars[i]
-        local path = vim.loop.os_getenv(var)
-        if path then
-            self.log:debug(string.format("Using runtime path: %s", path))
-            return path:match("/$") and path..sock_name or path.."/"..sock_name
+            for i = 1, #env_vars do
+                local var = env_vars[i]
+                local path = os.getenv(var)
+                if path then
+                    self.log:debug(string.format("Using runtime path: %s", path))
+                    sock_path = path:match("/$") and path..sock_name or path.."/"..sock_name
+                    break
+                end
+            end
         end
     end
 
-    return nil
+    return sock_path
 end
 
 -- Gets the file path of the current vim buffer
@@ -394,9 +443,32 @@ function Presence:get_status_text(filename)
     end
 end
 
--- Get all active local nvim unix domain socket addresses
-function Presence:get_nvim_socket_addrs(on_done)
-    self.log:debug("Getting nvim socket addresses...")
+-- Get all local nvim socket paths
+function Presence:get_nvim_socket_paths(on_done)
+    self.log:debug("Getting nvim socket paths...")
+    local sockets = {}
+
+    -- Get nvim sockets in WSL
+    if self.os.is_wsl then
+        -- TODO: Okay, there REALLY needs to be a better way of doing this
+        -- See https://github.com/microsoft/WSL/issues/2249 (no support for ss/netstat? srsly wtf do i do)
+        local cmd_fmt = "for file in %s/nvim*; do echo $file/0; done"
+        local cmd = string.format(cmd_fmt, vim.loop.os_tmpdir() or "/tmp")
+
+        -- TODO: Run this in an asynchronous task
+        local handle = io.popen(cmd)
+        local result = handle:read("*a")
+        handle:close()
+
+        for socket in result:gmatch("%S+") do
+            if socket ~= "" and socket ~= self.socket then
+                table.insert(sockets, socket)
+            end
+        end
+
+        self.log:debug(string.format("Got nvim socket paths: %s", vim.inspect(sockets)))
+        on_done(sockets)
+    end
 
     -- TODO: Find a better way to get paths of remote Neovim sockets lol
     local commands = {
@@ -415,7 +487,6 @@ function Presence:get_nvim_socket_addrs(on_done)
     }
     local cmd = commands[self.os.name]
 
-    local sockets = {}
     local function handle_data(_, data)
         if not data then return end
 
@@ -436,7 +507,7 @@ function Presence:get_nvim_socket_addrs(on_done)
     end
 
     local function handle_exit()
-        self.log:debug(string.format("Got nvim socket addresses: %s", vim.inspect(sockets)))
+        self.log:debug(string.format("Got nvim socket paths: %s", vim.inspect(sockets)))
         on_done(sockets)
     end
 
@@ -759,9 +830,9 @@ function Presence:register_and_sync_peer(id, socket)
 end
 
 -- Register self to any remote Neovim instances
--- Simply emits to all nvim socket addresses as we have not yet been synced with peer list
+-- Simply emits to all nvim sockets as we have not yet been synced with peer list
 function Presence:register_self()
-    self:get_nvim_socket_addrs(function(sockets)
+    self:get_nvim_socket_paths(function(sockets)
         if #sockets == 0 then
             self.log:debug("No other remote nvim instances")
             return
@@ -940,7 +1011,7 @@ function Presence:handle_buf_enter()
     self:update()
 end
 
--- WinLeave events cancel the current buffer presence
+-- BufAdd events force-update the presence for the current buffer unless it's a quickfix window
 function Presence:handle_buf_add()
     self.log:debug("Handling BufAdd event...")
 

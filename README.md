@@ -80,7 +80,7 @@ let g:presence_line_number_text    = "Line %s out of %s"
 * Enable logging and inspect the logs after opening a buffer
     * Set the [`log_level`](#lua) setup option or [`g:presence_log_level`](#viml) to `"debug"`
     * Load a file and inspect the logs with `:messages`
-* If there is a `Failed to get Discord IPC socket` error, your particular OS may not yet be supported
+* If there is a `Failed to determine Discord IPC socket` error, your particular OS may not yet be supported
     * If you don't see an existing [issue](https://github.com/andweeb/presence.nvim/issues) or [card](https://github.com/andweeb/presence.nvim/projects/1#column-14183588) for your OS, create a prefixed [issue](https://github.com/andweeb/presence.nvim/issues/new) (e.g. `[Void Linux]`)
 
 ## Development
