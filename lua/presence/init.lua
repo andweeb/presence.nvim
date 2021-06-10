@@ -293,10 +293,10 @@ function Presence:get_discord_socket()
     end
 
     local env_vars = {
+        "XDG_RUNTIME_DIR",
         "TEMP",
         "TMP",
         "TMPDIR",
-        "XDG_RUNTIME_DIR",
     }
 
     for i = 1, #env_vars do
