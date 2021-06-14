@@ -143,4 +143,5 @@ return {
     yaml = { "YAML", "yaml" },
     yml = { "YAML", "yaml" },
     zsh = { "Shell", "shell" },
+    zig = { "Zig", "zig" },
 }
