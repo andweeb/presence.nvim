@@ -84,6 +84,7 @@ return {
     hx = { "Haxe", "haxe" },
     hxx = { "C++ header file", "c_plus_plus" },
     ini = { "Configuration file", "config" },
+    ino = { "Arduino", "Arduino" },
     java = { "Java", "java" },
     jl = { "Julia", "julia" },
     js = { "JavaScript", "javascript" },
