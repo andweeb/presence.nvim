@@ -59,24 +59,24 @@ Presence.socket = vim.v.servername
 Presence.workspace = nil
 Presence.workspaces = {}
 
--- Get the operating system name (eh should be good enough)
--- http://www.lua.org/manual/5.3/manual.html#pdf-package.config
-local separator = package.config:sub(1,1)
-local wsl_distro_name = os.getenv("WSL_DISTRO_NAME")
-Presence.os = {
-    name = separator == [[\]] and "windows" or "unix",
-    wsl_distro_name = wsl_distro_name,
-    is_wsl = wsl_distro_name ~= nil,
-    path_separator = separator,
-}
-
 local log = require("lib.log")
 local msgpack = require("deps.msgpack")
 local serpent = require("deps.serpent")
-local Discord = require("presence.discord")
 local file_assets = require("presence.file_assets")
 local file_explorers = require("presence.file_explorers")
 local plugin_managers = require("presence.plugin_managers")
+local Discord = require("presence.discord")
+
+function Presence:get_os_name()
+    local uname = vim.loop.os_uname()
+    if uname.sysname:find("Windows") then
+        return "windows"
+    elseif uname.sysname:find("Darwin") then
+        return "macos"
+    elseif uname.sysname:find("Linux") then
+        return "linux"
+    end
+end
 
 function Presence:setup(options)
     options = options or {}
@@ -86,12 +86,27 @@ function Presence:setup(options)
     self:set_option("log_level", nil, false)
     self.log = log:init({ level = options.log_level })
 
+    -- Get operating system information including path separator
+    -- http://www.lua.org/manual/5.3/manual.html#pdf-package.config
+    local separator = package.config:sub(1,1)
+    local wsl_distro_name = os.getenv("WSL_DISTRO_NAME")
+    self.os = {
+        name = self:get_os_name(),
+        is_wsl = wsl_distro_name ~= nil,
+        path_separator = separator,
+    }
+
     -- Print setup message with OS information
     local setup_message_fmt = "Setting up plugin for %s"
-    local setup_message = self.os.is_wsl
-        and string.format(setup_message_fmt.." in WSL (%s)", self.os.name, self.os.wsl_distro_name)
-        or string.format(setup_message_fmt, self.os.name)
-    self.log:debug(setup_message)
+    if self.os.name then
+        local setup_message = self.os.is_wsl
+            and string.format(setup_message_fmt.." in WSL (%s)", self.os.name, wsl_distro_name)
+            or string.format(setup_message_fmt, self.os.name)
+        self.log:debug(setup_message)
+    else
+        self.log:error(string.format("Unable to detect operating system: %s"))
+        self.log:debug(vim.inspect(vim.loop.os_uname()))
+    end
 
     -- Use the default or user-defined client id if provided
     if options.client_id then
@@ -323,7 +338,6 @@ end
 function Presence:get_discord_socket_path()
     local sock_name = "discord-ipc-0"
     local sock_path = nil
-    local sock_stats = nil
 
     if self.os.is_wsl then
         -- Use socket created by relay for WSL
@@ -331,28 +345,28 @@ function Presence:get_discord_socket_path()
     elseif self.os.name == "windows" then
         -- Use named pipe in NPFS for Windows
         sock_path = [[\\.\pipe\]]..sock_name
-    else
-        -- Use tmpdir for Unix
-        local tmpdir = vim.loop.os_tmpdir()
-        if tmpdir and vim.loop.fs_stat(tmpdir..sock_name) then
-            sock_path = tmpdir..sock_name
-        else
-            -- Fallback to manually trying various temp directory environment variables
-            local env_vars = {
-                "TEMP",
-                "TMP",
-                "TMPDIR",
-                "XDG_RUNTIME_DIR",
-            }
+    elseif self.os.name == "macos" then
+        -- Use $TMPDIR for macOS
+        local path = os.getenv(var)
+        sock_path = path:match("/$")
+            and path..sock_name
+            or path.."/"..sock_name
+    elseif self.os.name == "linux" then
+        -- Check various temp directory environment variables
+        local env_vars = {
+            "XDG_RUNTIME_DIR",
+            "TEMP",
+            "TMP",
+            "TMPDIR",
+        }
 
-            for i = 1, #env_vars do
-                local var = env_vars[i]
-                local path = os.getenv(var)
-                if path then
-                    self.log:debug(string.format("Using runtime path: %s", path))
-                    sock_path = path:match("/$") and path..sock_name or path.."/"..sock_name
-                    break
-                end
+        for i = 1, #env_vars do
+            local var = env_vars[i]
+            local path = os.getenv(var)
+            if path then
+                self.log:debug(string.format("Using runtime path: %s", path))
+                sock_path = path:match("/$") and path..sock_name or path.."/"..sock_name
+                break
             end
         end
     end
@@ -470,22 +484,43 @@ function Presence:get_nvim_socket_paths(on_done)
         on_done(sockets)
     end
 
-    -- TODO: Find a better way to get paths of remote Neovim sockets lol
-    local commands = {
-        unix = table.concat({
+    local cmd = nil
+
+    if self.os.name == "windows" then
+        cmd = {
+            "powershell.exe",
+            "-Command",
+            [[(Get-ChildItem \\.\pipe\).FullName | findstr 'nvim']],
+        }
+    elseif self.os.name == "macos" then
+        if vim.fn.executable("netstat") == 0 then
+            self.log:warn("`netstat` command unavailable")
+            return
+        end
+
+        cmd = table.concat({
             "netstat -u",
             [[grep --color=never "nvim.*/0"]],
             [[awk -F "[ :]+" '{print $9}']],
             "sort",
             "uniq",
-        }, "|"),
-        windows = {
-            "powershell.exe",
-            "-Command",
-            [[(Get-ChildItem \\.\pipe\).FullName | findstr 'nvim']],
-        },
-    }
-    local cmd = commands[self.os.name]
+        }, "|")
+    elseif self.os.name == "linux" then
+        -- Use netstat if available
+        if vim.fn.executable("netstat") == 1 then
+            cmd = table.concat({
+                "netstat -u",
+                [[grep --color=never "nvim.*/0"]],
+                [[awk -F "[ :]+" '{print $9}']],
+                "sort",
+                "uniq",
+            }, "|")
+        elseif vim.fn.executable("ss") == 1 then
+            -- TODO
+        end
+    else
+        return
+    end
 
     local function handle_data(_, data)
         if not data then return end
