@@ -67,7 +67,7 @@ local file_explorers = require("presence.file_explorers")
 local plugin_managers = require("presence.plugin_managers")
 local Discord = require("presence.discord")
 
-function Presence:get_os_name()
+function Presence.get_os_name()
     local uname = vim.loop.os_uname()
     if uname.sysname:find("Windows") then
         return "windows"
@@ -91,7 +91,7 @@ function Presence:setup(options)
     local separator = package.config:sub(1,1)
     local wsl_distro_name = os.getenv("WSL_DISTRO_NAME")
     self.os = {
-        name = self:get_os_name(),
+        name = self.get_os_name() or "unknown",
         is_wsl = wsl_distro_name ~= nil,
         path_separator = separator,
     }
@@ -100,7 +100,7 @@ function Presence:setup(options)
     local setup_message_fmt = "Setting up plugin for %s"
     if self.os.name then
         local setup_message = self.os.is_wsl
-            and string.format(setup_message_fmt.." in WSL (%s)", self.os.name, wsl_distro_name)
+            and string.format(setup_message_fmt.." in WSL (%s)", self.os.name, vim.inspect(wsl_distro_name))
             or string.format(setup_message_fmt, self.os.name)
         self.log:debug(setup_message)
     else
@@ -226,7 +226,7 @@ function Presence:check_discord_socket(path)
             return
         end
 
-        self.log:debug(string.format("Checked Discord IPC socket, looks good!", msg_prefix))
+        self.log:debug(string.format("Checked Discord IPC socket, looks good!"))
     end)
 end
 
@@ -347,7 +347,7 @@ function Presence:get_discord_socket_path()
         sock_path = [[\\.\pipe\]]..sock_name
     elseif self.os.name == "macos" then
         -- Use $TMPDIR for macOS
-        local path = os.getenv(var)
+        local path = os.getenv("TMPDIR")
         sock_path = path:match("/$")
             and path..sock_name
             or path.."/"..sock_name
@@ -461,32 +461,20 @@ end
 function Presence:get_nvim_socket_paths(on_done)
     self.log:debug("Getting nvim socket paths...")
     local sockets = {}
+    local cmd
 
-    -- Get nvim sockets in WSL
     if self.os.is_wsl then
-        -- TODO: Okay, there REALLY needs to be a better way of doing this
-        -- See https://github.com/microsoft/WSL/issues/2249 (no support for ss/netstat? srsly wtf do i do)
+        -- TODO: There needs to be a better way of doing this... no support for ss/netstat?
+        -- (See https://github.com/microsoft/WSL/issues/2249)
         local cmd_fmt = "for file in %s/nvim*; do echo $file/0; done"
-        local cmd = string.format(cmd_fmt, vim.loop.os_tmpdir() or "/tmp")
+        local shell_cmd = string.format(cmd_fmt, vim.loop.os_tmpdir() or "/tmp")
 
-        -- TODO: Run this in an asynchronous task
-        local handle = io.popen(cmd)
-        local result = handle:read("*a")
-        handle:close()
-
-        for socket in result:gmatch("%S+") do
-            if socket ~= "" and socket ~= self.socket then
-                table.insert(sockets, socket)
-            end
-        end
-
-        self.log:debug(string.format("Got nvim socket paths: %s", vim.inspect(sockets)))
-        on_done(sockets)
-    end
-
-    local cmd = nil
-
-    if self.os.name == "windows" then
+        cmd = {
+            "sh",
+            "-c",
+            shell_cmd,
+        }
+    elseif self.os.name == "windows" then
         cmd = {
             "powershell.exe",
             "-Command",
@@ -494,7 +482,7 @@ function Presence:get_nvim_socket_paths(on_done)
         }
     elseif self.os.name == "macos" then
         if vim.fn.executable("netstat") == 0 then
-            self.log:warn("`netstat` command unavailable")
+            self.log:warn("Unable to get nvim socket paths: `netstat` command unavailable")
             return
         end
 
@@ -506,8 +494,8 @@ function Presence:get_nvim_socket_paths(on_done)
             "uniq",
         }, "|")
     elseif self.os.name == "linux" then
-        -- Use netstat if available
         if vim.fn.executable("netstat") == 1 then
+            -- Use `netstat` if available
             cmd = table.concat({
                 "netstat -u",
                 [[grep --color=never "nvim.*/0"]],
@@ -516,9 +504,22 @@ function Presence:get_nvim_socket_paths(on_done)
                 "uniq",
             }, "|")
         elseif vim.fn.executable("ss") == 1 then
-            -- TODO
+            -- Use `ss` if available
+            cmd = table.concat({
+                "ss -lx",
+                [[grep "nvim.*/0"]],
+                [[awk -F "[ :]+" '{print $5}']],
+                "sort",
+                "uniq",
+            }, "|")
+        else
+            local warning_msg = "Unable to get nvim socket paths: `netstat` and `ss` commands unavailable"
+            self.log:warn(warning_msg)
+            return
         end
     else
+        local warning_fmt = "Unable to get nvim socket paths: Unexpected OS: %s"
+        self.log:warn(string.format(warning_fmt, self.os.name))
         return
     end
 
@@ -537,7 +538,7 @@ function Presence:get_nvim_socket_paths(on_done)
         if not data then return end
 
         if data[1] ~= "" then
-            self.log:error(data[1])
+            self.log:error(string.format("Unable to get nvim socket paths: %s", data[1]))
         end
     end
 
@@ -546,6 +547,8 @@ function Presence:get_nvim_socket_paths(on_done)
         on_done(sockets)
     end
 
+    local cmd_str = type(cmd) == "table" and table.concat(cmd, ", ") or cmd
+    self.log:debug(string.format("Executing command: `%s`", cmd_str))
     vim.fn.jobstart(cmd, {
         on_stdout = handle_data,
         on_stderr = handle_error,
