@@ -67,17 +67,6 @@ local file_explorers = require("presence.file_explorers")
 local plugin_managers = require("presence.plugin_managers")
 local Discord = require("presence.discord")
 
-function Presence.get_os_name()
-    local uname = vim.loop.os_uname()
-    if uname.sysname:find("Windows") then
-        return "windows"
-    elseif uname.sysname:find("Darwin") then
-        return "macos"
-    elseif uname.sysname:find("Linux") then
-        return "linux"
-    end
-end
-
 function Presence:setup(options)
     options = options or {}
     self.options = options
@@ -88,11 +77,13 @@ function Presence:setup(options)
 
     -- Get operating system information including path separator
     -- http://www.lua.org/manual/5.3/manual.html#pdf-package.config
+    local uname = vim.loop.os_uname()
     local separator = package.config:sub(1,1)
     local wsl_distro_name = os.getenv("WSL_DISTRO_NAME")
+    local os_name = self.get_os_name(uname)
     self.os = {
-        name = self.get_os_name() or "unknown",
-        is_wsl = wsl_distro_name ~= nil,
+        name = os_name,
+        is_wsl = uname.release:find("Microsoft") ~= nil,
         path_separator = separator,
     }
 
@@ -166,6 +157,19 @@ function Presence:setup(options)
     self:register_self()
 
     return self
+end
+
+-- Normalize the OS name from uname
+function Presence.get_os_name(uname)
+    if uname.sysname:find("Windows") then
+        return "windows"
+    elseif uname.sysname:find("Darwin") then
+        return "macos"
+    elseif uname.sysname:find("Linux") then
+        return "linux"
+    end
+
+    return "unknown"
 end
 
 -- To ensure consistent option values, coalesce true and false values to 1 and 0
