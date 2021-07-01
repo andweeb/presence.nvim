@@ -53,6 +53,7 @@ local Presence = {}
 Presence.is_authorized = false
 Presence.is_authorizing = false
 Presence.is_connected = false
+Presence.is_connecting = false
 Presence.last_activity = {}
 Presence.peers = {}
 Presence.socket = vim.v.servername
@@ -292,7 +293,11 @@ end
 function Presence:connect(on_done)
     self.log:debug("Connecting to Discord...")
 
+    self.is_connecting = true
+
     self.discord:connect(function(err)
+        self.is_connecting = false
+
         -- Handle known connection errors
         if err == "EISCONN" then
             self.log:info("Already connected to Discord")
@@ -579,8 +584,10 @@ function Presence.discord_event(on_ready)
         end
 
         -- Schedule event if currently authorizing with Discord
-        if self.is_authorizing then
-            self.log:debug("Currently authorizing with Discord, scheduling callback for later...")
+        if self.is_connecting or self.is_authorizing then
+            local action = self.is_connecting and "connecting" or "authorizing"
+            local message_fmt = "Currently %s with Discord, scheduling callback for later..."
+            self.log:debug(string.format(message_fmt, action))
             return vim.schedule(callback)
         end
 
