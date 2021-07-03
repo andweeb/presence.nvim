@@ -1008,6 +1008,7 @@ end
 function Presence:handle_vim_leave_pre()
     self.log:debug("Handling VimLeavePre event...")
     self:unregister_self()
+    self:cancel()
 end
 
 -- WinEnter events force-update the current buffer presence unless it's a quickfix window
