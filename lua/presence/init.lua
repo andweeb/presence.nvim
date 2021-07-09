@@ -60,21 +60,13 @@ Presence.socket = vim.v.servername
 Presence.workspace = nil
 Presence.workspaces = {}
 
--- Get the operating system name (eh should be good enough)
--- http://www.lua.org/manual/5.3/manual.html#pdf-package.config
-local separator = package.config:sub(1,1)
-Presence.os = {
-    name = separator == [[\]] and "windows" or "unix",
-    path_separator = separator,
-}
-
 local log = require("lib.log")
 local msgpack = require("deps.msgpack")
 local serpent = require("deps.serpent")
-local Discord = require("presence.discord")
 local file_assets = require("presence.file_assets")
 local file_explorers = require("presence.file_explorers")
 local plugin_managers = require("presence.plugin_managers")
+local Discord = require("presence.discord")
 
 function Presence:setup(options)
     options = options or {}
@@ -83,7 +75,30 @@ function Presence:setup(options)
     -- Initialize logger
     self:set_option("log_level", nil, false)
     self.log = log:init({ level = options.log_level })
-    self.log:debug("Setting up plugin...")
+
+    -- Get operating system information including path separator
+    -- http://www.lua.org/manual/5.3/manual.html#pdf-package.config
+    local uname = vim.loop.os_uname()
+    local separator = package.config:sub(1,1)
+    local wsl_distro_name = os.getenv("WSL_DISTRO_NAME")
+    local os_name = self.get_os_name(uname)
+    self.os = {
+        name = os_name,
+        is_wsl = uname.release:find("Microsoft") ~= nil,
+        path_separator = separator,
+    }
+
+    -- Print setup message with OS information
+    local setup_message_fmt = "Setting up plugin for %s"
+    if self.os.name then
+        local setup_message = self.os.is_wsl
+            and string.format(setup_message_fmt.." in WSL (%s)", self.os.name, vim.inspect(wsl_distro_name))
+            or string.format(setup_message_fmt, self.os.name)
+        self.log:debug(setup_message)
+    else
+        self.log:error(string.format("Unable to detect operating system: %s"))
+        self.log:debug(vim.inspect(vim.loop.os_uname()))
+    end
 
     -- Use the default or user-defined client id if provided
     if options.client_id then
@@ -106,19 +121,23 @@ function Presence:setup(options)
     self:set_option("workspace_text", "Working on %s")
     self:set_option("line_number_text", "Line %s out of %s")
 
-    local discord_socket = self:get_discord_socket()
-    if not discord_socket then
-        self.log:error("Failed to get Discord IPC socket")
+    -- Get and check discord socket path
+    local discord_socket_path = self:get_discord_socket_path()
+    if discord_socket_path then
+        self.log:debug(string.format("Using Discord IPC socket path: %s", discord_socket_path))
+        self:check_discord_socket(discord_socket_path)
+    else
+        self.log:error("Failed to determine Discord IPC socket path")
     end
 
     -- Initialize discord RPC client
     self.discord = Discord:init({
         logger = self.log,
         client_id = options.client_id,
-        ipc_socket = discord_socket,
+        ipc_socket = discord_socket_path,
     })
 
-    -- Seed instance id using unique socket address
+    -- Seed instance id using unique socket path
     local seed_nums = {}
     self.socket:gsub(".", function(c) table.insert(seed_nums, c:byte()) end)
     self.id = self.discord.generate_uuid(tonumber(table.concat(seed_nums)) / os.clock())
@@ -139,6 +158,19 @@ function Presence:setup(options)
     self:register_self()
 
     return self
+end
+
+-- Normalize the OS name from uname
+function Presence.get_os_name(uname)
+    if uname.sysname:find("Windows") then
+        return "windows"
+    elseif uname.sysname:find("Darwin") then
+        return "macos"
+    elseif uname.sysname:find("Linux") then
+        return "linux"
+    end
+
+    return "unknown"
 end
 
 -- To ensure consistent option values, coalesce true and false values to 1 and 0
@@ -179,6 +211,28 @@ function Presence:check_dup_options(option)
 
         self.log:warn(warning_msg)
     end
+end
+
+-- Check the Discord socket at the given path
+function Presence:check_discord_socket(path)
+    self.log:debug(string.format("Checking Discord IPC socket at %s...", path))
+
+    -- Asynchronously check socket path via stat
+    vim.loop.fs_stat(path, function(err, stats)
+        if err then
+            local err_msg = "Failed to get socket information"
+            self.log:error(string.format("%s: %s", err_msg, err))
+            return
+        end
+
+        if stats.type ~= "socket" then
+            local warning_msg = "Found unexpected Discord IPC socket type"
+            self.log:warn(string.format("%s: %s", warning_msg, err))
+            return
+        end
+
+        self.log:debug(string.format("Checked Discord IPC socket, looks good!"))
+    end)
 end
 
 -- Send a nil activity to unset the presence
@@ -289,31 +343,44 @@ function Presence:authorize(on_done)
     end)
 end
 
--- Find the the IPC path in temp runtime directories
-function Presence:get_discord_socket()
+-- Find the Discord socket from temp runtime directories
+function Presence:get_discord_socket_path()
     local sock_name = "discord-ipc-0"
+    local sock_path = nil
 
-    if self.os.name == "windows" then
-        return [[\\.\pipe\]]..sock_name
-    end
+    if self.os.is_wsl then
+        -- Use socket created by relay for WSL
+        sock_path = "/var/run/"..sock_name
+    elseif self.os.name == "windows" then
+        -- Use named pipe in NPFS for Windows
+        sock_path = [[\\.\pipe\]]..sock_name
+    elseif self.os.name == "macos" then
+        -- Use $TMPDIR for macOS
+        local path = os.getenv("TMPDIR")
+        sock_path = path:match("/$")
+            and path..sock_name
+            or path.."/"..sock_name
+    elseif self.os.name == "linux" then
+        -- Check various temp directory environment variables
+        local env_vars = {
+            "XDG_RUNTIME_DIR",
+            "TEMP",
+            "TMP",
+            "TMPDIR",
+        }
 
-    local env_vars = {
-        "XDG_RUNTIME_DIR",
-        "TEMP",
-        "TMP",
-        "TMPDIR",
-    }
-
-    for i = 1, #env_vars do
-        local var = env_vars[i]
-        local path = vim.loop.os_getenv(var)
-        if path then
-            self.log:debug(string.format("Using runtime path: %s", path))
-            return path:match("/$") and path..sock_name or path.."/"..sock_name
+        for i = 1, #env_vars do
+            local var = env_vars[i]
+            local path = os.getenv(var)
+            if path then
+                self.log:debug(string.format("Using runtime path: %s", path))
+                sock_path = path:match("/$") and path..sock_name or path.."/"..sock_name
+                break
+            end
         end
     end
 
-    return nil
+    return sock_path
 end
 
 -- Gets the file path of the current vim buffer
@@ -399,34 +466,85 @@ function Presence:get_status_text(filename)
     end
 end
 
--- Get all active local nvim unix domain socket addresses
-function Presence:get_nvim_socket_addrs(on_done)
-    self.log:debug("Getting nvim socket addresses...")
+-- Get all local nvim socket paths
+function Presence:get_nvim_socket_paths(on_done)
+    self.log:debug("Getting nvim socket paths...")
+    local sockets = {}
+    local parser = {}
+    local cmd
 
-    -- TODO: Find a better way to get paths of remote Neovim sockets lol
-    local commands = {
-        unix = table.concat({
-            "netstat -u",
-            [[grep --color=never "nvim.*/0"]],
-            [[awk -F "[ :]+" '{print $9}']],
-            "sort",
-            "uniq",
-        }, "|"),
-        windows = {
+    if self.os.is_wsl then
+        -- TODO: There needs to be a better way of doing this... no support for ss/netstat?
+        -- (See https://github.com/microsoft/WSL/issues/2249)
+        local cmd_fmt = "for file in %s/nvim*; do echo $file/0; done"
+        local shell_cmd = string.format(cmd_fmt, vim.loop.os_tmpdir() or "/tmp")
+
+        cmd = {
+            "sh",
+            "-c",
+            shell_cmd,
+        }
+    elseif self.os.name == "windows" then
+        cmd = {
             "powershell.exe",
             "-Command",
             [[(Get-ChildItem \\.\pipe\).FullName | findstr 'nvim']],
-        },
-    }
-    local cmd = commands[self.os.name]
+        }
+    elseif self.os.name == "macos" then
+        if vim.fn.executable("netstat") == 0 then
+            self.log:warn("Unable to get nvim socket paths: `netstat` command unavailable")
+            return
+        end
 
-    local sockets = {}
+        -- Define macOS BSD netstat output parser
+        function parser.parse(data)
+            return data:match("%s(/.+)")
+        end
+
+        cmd = table.concat({
+            "netstat -u",
+            [[grep --color=never "nvim.*/0"]],
+        }, "|")
+    elseif self.os.name == "linux" then
+        if vim.fn.executable("netstat") == 1 then
+            -- Use `netstat` if available
+            cmd = table.concat({
+                "netstat -u",
+                [[grep --color=never "nvim.*/0"]],
+            }, "|")
+
+            -- Define netstat output parser
+            function parser.parse(data)
+                return data:match("%s(/.+)")
+            end
+        elseif vim.fn.executable("ss") == 1 then
+            -- Use `ss` if available
+            cmd = table.concat({
+                "ss -lx",
+                [[grep "nvim.*/0"]],
+            }, "|")
+
+            -- Define ss output parser
+            function parser.parse(data)
+                return data:match("%s(/.-)%s")
+            end
+        else
+            local warning_msg = "Unable to get nvim socket paths: `netstat` and `ss` commands unavailable"
+            self.log:warn(warning_msg)
+            return
+        end
+    else
+        local warning_fmt = "Unable to get nvim socket paths: Unexpected OS: %s"
+        self.log:warn(string.format(warning_fmt, self.os.name))
+        return
+    end
+
     local function handle_data(_, data)
         if not data then return end
 
         for i = 1, #data do
-            local socket = vim.trim(data[i])
-            if socket ~= "" and socket ~= self.socket then
+            local socket = parser.parse and parser.parse(vim.trim(data[i])) or vim.trim(data[i])
+            if socket and socket ~= "" and socket ~= self.socket then
                 table.insert(sockets, socket)
             end
         end
@@ -436,15 +554,17 @@ function Presence:get_nvim_socket_addrs(on_done)
         if not data then return end
 
         if data[1] ~= "" then
-            self.log:error(data[1])
+            self.log:error(string.format("Unable to get nvim socket paths: %s", data[1]))
         end
     end
 
     local function handle_exit()
-        self.log:debug(string.format("Got nvim socket addresses: %s", vim.inspect(sockets)))
+        self.log:debug(string.format("Got nvim socket paths: %s", vim.inspect(sockets)))
         on_done(sockets)
     end
 
+    local cmd_str = type(cmd) == "table" and table.concat(cmd, ", ") or cmd
+    self.log:debug(string.format("Executing command: `%s`", cmd_str))
     vim.fn.jobstart(cmd, {
         on_stdout = handle_data,
         on_stderr = handle_error,
@@ -766,9 +886,9 @@ function Presence:register_and_sync_peer(id, socket)
 end
 
 -- Register self to any remote Neovim instances
--- Simply emits to all nvim socket addresses as we have not yet been synced with peer list
+-- Simply emits to all nvim sockets as we have not yet been synced with peer list
 function Presence:register_self()
-    self:get_nvim_socket_addrs(function(sockets)
+    self:get_nvim_socket_paths(function(sockets)
         if #sockets == 0 then
             self.log:debug("No other remote nvim instances")
             return
@@ -895,6 +1015,7 @@ end
 function Presence:handle_vim_leave_pre()
     self.log:debug("Handling VimLeavePre event...")
     self:unregister_self()
+    self:cancel()
 end
 
 -- WinEnter events force-update the current buffer presence unless it's a quickfix window
@@ -947,7 +1068,7 @@ function Presence:handle_buf_enter()
     self:update()
 end
 
--- WinLeave events cancel the current buffer presence
+-- BufAdd events force-update the presence for the current buffer unless it's a quickfix window
 function Presence:handle_buf_add()
     self.log:debug("Handling BufAdd event...")
 

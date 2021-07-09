@@ -7,11 +7,12 @@
 <img src="https://gist.githubusercontent.com/andweeb/df3216345530234289b87cf5080c2c60/raw/4b07351547ae9a6bfdcbc1f915889b90a5349242/presence-demo.gif" alt="demo.gif">
 
 ## Features
-* Simple and unobtrusive
-* Support for macOS, Linux, and Windows[\*](#notes)
+* Light and unobtrusive
 * No Python/Node providers (or CoC) required
+* Cross-platform support: macOS, nixOS, Linux, Windows[\*](https://github.com/andweeb/presence.nvim/projects/1#card-60537963), WSL[\*](https://github.com/andweeb/presence.nvim/wiki/Rich-Presence-in-WSL)
 * Startup time is fast(er than other Rich Presence plugins, by [kind of a lot](https://github.com/andweeb/presence.nvim/wiki/Plugin-Comparisons))
-* Written in Lua and configurable in Lua (but also configurable in VimL if you want)
+* Written in Lua and [highly configurable](#configuration) in Lua (but also configurable in VimL if you want)
+* Manages Rich Presence across multiple Neovim instances in various environments (tmux panes/windows, ssh sessions, terminal tabs/windows, etc.)
 
 ## Installation
 Use your favorite plugin manager
@@ -19,14 +20,14 @@ Use your favorite plugin manager
 * [packer.nvim](https://github.com/wbthomason/packer.nvim): `use 'andweeb/presence.nvim'`
 
 #### Notes
-* Requires [Neovim nightly](https://github.com/neovim/neovim/releases/tag/nightly) (0.5)
-* Windows is [partially supported](https://github.com/andweeb/presence.nvim/projects/1#card-60537963), WSL is [not yet supported](https://github.com/andweeb/presence.nvim/projects/1#card-60537961)
+* Requires [Neovim 0.5](https://github.com/neovim/neovim/releases/tag/v0.5.0) or higher
+* Rich Presence should work automatically after installation (unless you're using WSL, in which case [see here](https://github.com/andweeb/presence.nvim/wiki/Rich-Presence-in-WSL))
 
 ## Configuration
-Rich Presence works right out of the box after installation, so configuration is **optional**! For those that do want to override default behaviors, however, configuration options are available in either Lua or VimL.
+Configuration is not necessary for Rich Presence to work. But for those that want to override the default configs, the following options are available to configure in either Lua or VimL.
 
 ### Lua
-Require the plugin and call `setup` with a config table with any of the following keys:
+Require the plugin and call `setup` with a config table with one or more of the following keys:
 
 ```lua
 -- The setup config table shows all available config options with their default values:
@@ -75,13 +76,14 @@ let g:presence_line_number_text    = "Line %s out of %s"
 
 ## Troubleshooting
 * Ensure that Discord is running
-* Ensure that your Neovim version is on 0.5
+* Ensure that your Neovim version is 0.5 or higher
 * Ensure Game Activity is enabled in your Discord settings
 * Enable logging and inspect the logs after opening a buffer
     * Set the [`log_level`](#lua) setup option or [`g:presence_log_level`](#viml) to `"debug"`
     * Load a file and inspect the logs with `:messages`
-* If there is a `Failed to get Discord IPC socket` error, your particular OS may not yet be supported
+* If there is a `Failed to determine Discord IPC socket` error, your particular OS may not yet be supported
     * If you don't see an existing [issue](https://github.com/andweeb/presence.nvim/issues) or [card](https://github.com/andweeb/presence.nvim/projects/1#column-14183588) for your OS, create a prefixed [issue](https://github.com/andweeb/presence.nvim/issues/new) (e.g. `[Void Linux]`)
+* Still not working and need help? Create a new [issue](https://github.com/andweeb/presence.nvim/issues)!
 
 ## Development
 * Clone the repo: `git clone https://github.com/andweeb/presence.nvim.git`
@@ -90,6 +92,6 @@ let g:presence_line_number_text    = "Line %s out of %s"
 * Ensure that there are no [luacheck](https://github.com/mpeterv/luacheck/) errors: `luacheck lua`
 
 ## Contributing
-Pull requests are very welcome, feel free to open an issue to work on any of the open [todo items](https://github.com/andweeb/presence.nvim/projects/1?add_cards_query=is%3Aopen)!
+Pull requests are very welcome, feel free to open an issue to work on any of the open [todo items](https://github.com/andweeb/presence.nvim/projects/1?add_cards_query=is%3Aopen) or message [droob#1322](https://discordapp.com/users/241953146232897550) on Discord!
 
 Asset additions and changes are also welcome! Supported file types can be found in [`file_assets.lua`](lua/presence/file_assets.lua) and their referenced asset files can be found [in this folder](https://www.dropbox.com/sh/j8913f0gav3toeh/AADxjn0NuTprGFtv3Il1Pqz-a?dl=0).
