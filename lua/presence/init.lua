@@ -470,6 +470,7 @@ end
 function Presence:get_nvim_socket_paths(on_done)
     self.log:debug("Getting nvim socket paths...")
     local sockets = {}
+    local parser = {}
     local cmd
 
     if self.os.is_wsl then
@@ -495,12 +496,14 @@ function Presence:get_nvim_socket_paths(on_done)
             return
         end
 
+        -- Define macOS BSD netstat output parser
+        function parser.parse(data)
+            return data:match("%s(/.+)")
+        end
+
         cmd = table.concat({
             "netstat -u",
             [[grep --color=never "nvim.*/0"]],
-            [[awk -F "[ :]+" '{print $9}']],
-            "sort",
-            "uniq",
         }, "|")
     elseif self.os.name == "linux" then
         if vim.fn.executable("netstat") == 1 then
@@ -508,19 +511,23 @@ function Presence:get_nvim_socket_paths(on_done)
             cmd = table.concat({
                 "netstat -u",
                 [[grep --color=never "nvim.*/0"]],
-                [[awk -F "[ :]+" '{print $9}']],
-                "sort",
-                "uniq",
             }, "|")
+
+            -- Define netstat output parser
+            function parser.parse(data)
+                return data:match("%s(/.+)")
+            end
         elseif vim.fn.executable("ss") == 1 then
             -- Use `ss` if available
             cmd = table.concat({
                 "ss -lx",
                 [[grep "nvim.*/0"]],
-                [[awk -F "[ :]+" '{print $5}']],
-                "sort",
-                "uniq",
             }, "|")
+
+            -- Define ss output parser
+            function parser.parse(data)
+                return data:match("%s(/.-)%s")
+            end
         else
             local warning_msg = "Unable to get nvim socket paths: `netstat` and `ss` commands unavailable"
             self.log:warn(warning_msg)
@@ -536,8 +543,8 @@ function Presence:get_nvim_socket_paths(on_done)
         if not data then return end
 
         for i = 1, #data do
-            local socket = vim.trim(data[i])
-            if socket ~= "" and socket ~= self.socket then
+            local socket = parser.parse and parser.parse(vim.trim(data[i])) or vim.trim(data[i])
+            if socket and socket ~= "" and socket ~= self.socket then
                 table.insert(sockets, socket)
             end
         end
