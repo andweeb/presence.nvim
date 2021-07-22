@@ -21,7 +21,7 @@ for i = 1, #Log.levels do
 
     Log[level] = function(self, message)
         -- Skip if log level is not set or the log is below the configured or default level
-        if not self.level or self.codes[level] < self.codes[self.level] then
+        if not self.level or self.codes[level] < self.codes[self.level] or type(message) ~= "string" then
             return
         end
 

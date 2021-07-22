@@ -96,8 +96,7 @@ function Presence:setup(options)
             or string.format(setup_message_fmt, self.os.name)
         self.log:debug(setup_message)
     else
-        self.log:error(string.format("Unable to detect operating system: %s"))
-        self.log:debug(vim.inspect(vim.loop.os_uname()))
+        self.log:error(string.format("Unable to detect operating system: %s", vim.inspect(vim.loop.os_uname())))
     end
 
     -- Use the default or user-defined client id if provided
@@ -231,7 +230,7 @@ function Presence:check_discord_socket(path)
             return
         end
 
-        self.log:debug(string.format("Checked Discord IPC socket, looks good!"))
+        self.log:debug("Checked Discord IPC socket, looks good!")
     end)
 end
 
@@ -336,7 +335,7 @@ function Presence:authorize(on_done)
             return
         end
 
-        self.log:info("Authorized with Discord for "..response.data.user.username)
+        self.log:info(string.format("Authorized with Discord for %s", response.data.user.username))
         self.is_authorized = true
 
         if on_done then on_done() end
@@ -761,7 +760,7 @@ function Presence:update_for_buffer(buffer, should_debounce)
     self.log:debug("Setting Discord activity...")
     self.discord:set_activity(activity, function(err)
         if err then
-            self.log:error("Failed to set activity in Discord: "..err)
+            self.log:error(string.format("Failed to set activity in Discord: %s", err))
             return
         end
 
