@@ -108,6 +108,7 @@ return {
     nim = { "Nim", "nim" },
     nix = { "Nix", "nix" },
     pcss = { "PostCSS", "postcss" },
+    pgsql = { "PostgreSQL", "pgsql" },
     php = { "PHP", "php" },
     pl = { "Perl", "perl" },
     plist = { "Property List", "markup" },
@@ -132,6 +133,7 @@ return {
     swift = { "Swift", "swift" },
     tex = { "LaTeX", "latex" },
     text = { "Text file", "text" },
+    tl = { "Teal", "teal" },
     toml = { "TOML", "toml" },
     ts = { "TypeScript", "typescript" },
     tsx = { "React", "react" },
@@ -142,6 +144,6 @@ return {
     xml = { "XML", "markup" },
     yaml = { "YAML", "yaml" },
     yml = { "YAML", "yaml" },
-    zsh = { "Shell", "shell" },
     zig = { "Zig", "zig" },
+    zsh = { "Shell", "shell" },
 }
