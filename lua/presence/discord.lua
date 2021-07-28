@@ -54,7 +54,12 @@ end
 -- Make a remote procedure call to Discord
 -- Callback argument in format: on_response(error[, response_table])
 function Discord:call(opcode, payload, on_response)
-    self.encode_json(payload, function(body)
+    self.encode_json(payload, function(success, body)
+        if not success then
+            self.log:warn(string.format("Failed to encode payload: %s", vim.inspect(body)))
+            return
+        end
+
         -- Start reading for the response
         self.pipe:read_start(function(...)
             self:read_message(payload.nonce, on_response, ...)
@@ -86,17 +91,25 @@ function Discord:read_message(nonce, on_response, err, chunk)
         on_response(err_message)
 
     elseif chunk then
-        local header_size = 9
-        local message = chunk:sub(header_size)
+        -- Strip header from the chunk
+        local message = chunk:match("({.+)")
         local response_opcode = struct.unpack("<ii", chunk)
 
-        self.decode_json(message, function(response)
+        self.decode_json(message, function(success, response)
             -- Check for a non-frame opcode in the response
             if response_opcode ~= self.opcodes.frame then
                 local err_format = "Received unexpected opcode - %s (code %s)"
                 local err_message = string.format(err_format, response.message, response.code)
 
                 return on_response(err_message)
+            end
+
+            -- Unable to decode the response
+            if not success then
+                -- Indetermine state at this point, no choice but to simply warn on the parse failure
+                -- but invoke empty response callback as request may still have succeeded
+                self.log:warn(string.format("Failed to decode payload: %s", vim.inspect(message)))
+                return on_response()
             end
 
             -- Check for an error event response
@@ -170,13 +183,17 @@ end
 
 function Discord.decode_json(t, on_done)
     vim.schedule(function()
-        on_done(vim.fn.json_decode(t))
+        on_done(pcall(function()
+            return vim.fn.json_decode(t)
+        end))
     end)
 end
 
 function Discord.encode_json(t, on_done)
     vim.schedule(function()
-        on_done(vim.fn.json_encode(t))
+        on_done(pcall(function()
+            return vim.fn.json_encode(t)
+        end))
     end)
 end
 
