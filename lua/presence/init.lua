@@ -250,7 +250,7 @@ function Presence:cancel()
             return
         end
 
-        self.log:info("Cancelled Discord presence")
+        self.log:info("Canceled Discord presence")
     end)
 end
 
