@@ -637,14 +637,18 @@ function Presence:check_blacklist(buffer, parent_dirpath, project_dirpath)
         -- Match buffer
         if buffer:match(val) == buffer then return true end
         -- Match parent
-        if parent_dirpath then
-            if parent_dirpath:match(val) == parent_dirpath or parent_dirname:match(val) == parent_dirname then return true
-            end
+        local is_parent_directory_blacklisted = parent_dirpath and
+            (parent_dirpath:match(val) == parent_dirpath or
+            parent_dirname:match(val) == parent_dirname)
+        if is_parent_directory_blacklisted then
+            return true
         end
         -- Match project
-        if project_dirpath then
-            if project_dirpath:match(val) == project_dirpath or project_dirname:match(val) == project_dirname then return true
-            end
+        local is_project_directory_blacklisted = project_dirpath and
+            (parent_dirpath:match(val) == project_dirpath or
+            parent_dirname:match(val) == project_dirname)
+        if is_project_directory_blacklisted then
+            return true
         end
     end
 
@@ -653,6 +657,13 @@ end
 
 -- Update Rich Presence for the provided vim buffer
 function Presence:update_for_buffer(buffer, should_debounce)
+    -- Avoid unnecessary updates if the previous activity was for the current buffer
+    -- (allow same-buffer updates when line numbers are enabled)
+    if self.options.enable_line_number == 0 and self.last_activity.file == buffer then
+        self.log:debug(string.format("Activity already set for %s, skipping...", buffer))
+        return
+    end
+
     -- Parse vim buffer
     local filename = self.get_filename(buffer, self.os.path_separator)
     local parent_dirpath = self.get_dir_path(buffer, self.os.path_separator)
@@ -665,19 +676,12 @@ function Presence:update_for_buffer(buffer, should_debounce)
     local project_name, project_path = self:get_project_name(parent_dirpath)
 
     -- Check for blacklist
-    local is_blacklisted = self:check_blacklist(buffer, parent_dirpath, project_path)
+    local is_blacklisted = #self.options.blacklist > 0 and self:check_blacklist(buffer, parent_dirpath, project_path)
 
     if is_blacklisted then
         self.last_activity.file = buffer
-        self.log:debug("Project is blacklisted")
+        self.log:debug("Either project or directory name is blacklisted, skipping...")
         self:cancel()
-        return
-    end
-
-    -- Avoid unnecessary updates if the previous activity was for the current buffer
-    -- (allow same-buffer updates when line numbers are enabled)
-    if self.options.enable_line_number == 0 and self.last_activity.file == buffer then
-        self.log:debug(string.format("Activity already set for %s, skipping...", buffer))
         return
     end
 
