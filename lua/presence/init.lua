@@ -119,6 +119,8 @@ function Presence:setup(options)
     self:set_option("reading_text", "Reading %s")
     self:set_option("workspace_text", "Working on %s")
     self:set_option("line_number_text", "Line %s out of %s")
+    -- Blacklist table
+    self:set_option("blacklist", {})
 
     -- Get and check discord socket path
     local discord_socket_path = self:get_discord_socket_path()
@@ -613,6 +615,46 @@ function Presence.discord_event(on_ready)
     end
 end
 
+-- Check if the current project/parent is in blacklist
+function Presence:check_blacklist(buffer, parent_dirpath, project_dirpath)
+    local parent_dirname = nil
+    local project_dirname = nil
+
+    -- Parse parent/project directory name
+    if parent_dirpath then
+        parent_dirname = self.get_filename(parent_dirpath, self.os.path_separator)
+    end
+
+    if project_dirpath then
+        project_dirname = self.get_filename(project_dirpath, self.os.path_separator)
+    end
+
+    -- Blacklist table
+    local blacklist_table = self.options["blacklist"]
+
+    -- Loop over the values to see if the provided project/path is in the blacklist
+    for _, val in pairs(blacklist_table) do
+        -- Match buffer
+        if buffer:match(val) == buffer then return true end
+        -- Match parent
+        local is_parent_directory_blacklisted = parent_dirpath and
+            (parent_dirpath:match(val) == parent_dirpath or
+            parent_dirname:match(val) == parent_dirname)
+        if is_parent_directory_blacklisted then
+            return true
+        end
+        -- Match project
+        local is_project_directory_blacklisted = project_dirpath and
+            (parent_dirpath:match(val) == project_dirpath or
+            parent_dirname:match(val) == project_dirname)
+        if is_project_directory_blacklisted then
+            return true
+        end
+    end
+
+    return false
+end
+
 -- Update Rich Presence for the provided vim buffer
 function Presence:update_for_buffer(buffer, should_debounce)
     -- Avoid unnecessary updates if the previous activity was for the current buffer
@@ -622,19 +664,33 @@ function Presence:update_for_buffer(buffer, should_debounce)
         return
     end
 
-    local activity_set_at = os.time()
-    -- If we shouldn't debounce and we trigger an activity, keep this value the same.
-    -- Otherwise set it to the current time.
-    local relative_activity_set_at = should_debounce and self.last_activity.relative_set_at or os.time()
-
-    self.log:debug(string.format("Setting activity for %s...", buffer and #buffer > 0 and buffer or "unnamed buffer"))
-
     -- Parse vim buffer
     local filename = self.get_filename(buffer, self.os.path_separator)
     local parent_dirpath = self.get_dir_path(buffer, self.os.path_separator)
     local extension = filename and self.get_file_extension(filename) or nil
 
     self.log:debug(string.format("Parsed filename %s with %s extension", filename, extension or "no"))
+
+    self.log:debug(string.format("Getting project name for %s...", parent_dirpath))
+
+    local project_name, project_path = self:get_project_name(parent_dirpath)
+
+    -- Check for blacklist
+    local is_blacklisted = #self.options.blacklist > 0 and self:check_blacklist(buffer, parent_dirpath, project_path)
+
+    if is_blacklisted then
+        self.last_activity.file = buffer
+        self.log:debug("Either project or directory name is blacklisted, skipping...")
+        self:cancel()
+        return
+    end
+
+    local activity_set_at = os.time()
+    -- If we shouldn't debounce and we trigger an activity, keep this value the same.
+    -- Otherwise set it to the current time.
+    local relative_activity_set_at = should_debounce and self.last_activity.relative_set_at or os.time()
+
+    self.log:debug(string.format("Setting activity for %s...", buffer and #buffer > 0 and buffer or "unnamed buffer"))
 
     -- Determine image text and asset key
     local name = filename
@@ -693,10 +749,7 @@ function Presence:update_for_buffer(buffer, should_debounce)
     else
         -- Include project details if available and if the user hasn't set the enable_line_number option
 
-        self.log:debug(string.format("Getting project name for %s...", parent_dirpath))
-
         local workspace_text = self.options.workspace_text
-        local project_name, project_path = self:get_project_name(parent_dirpath)
 
         if project_name then
 
