@@ -40,6 +40,7 @@ require("presence"):setup({
     log_level           = nil,                        -- Log messages at or above this level (one of the following: "debug", "info", "warn", "error")
     debounce_timeout    = 10,                         -- Number of seconds to debounce events (or calls to `:lua package.loaded.presence:update(<filename>, true)`)
     enable_line_number  = false,                      -- Displays the current line number instead of the current project
+    blacklist           = {}                          -- A list of strings or Lua patterns that disable Rich Presence if the current file name, path, or workspace match
 
     -- Rich Presence text options
     editing_text        = "Editing %s",               -- Format string rendered when an editable file is loaded in the buffer
@@ -63,6 +64,7 @@ let g:presence_client_id           = "793271441293967371"
 let g:presence_log_level
 let g:presence_debounce_timeout    = 10
 let g:presence_enable_line_number  = 0
+let g:presence_blacklist           = []
 
 " Rich Presence text options
 let g:presence_editing_text        = "Editing %s"
