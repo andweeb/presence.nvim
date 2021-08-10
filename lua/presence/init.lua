@@ -119,8 +119,8 @@ function Presence:setup(options)
     self:set_option("reading_text", "Reading %s")
     self:set_option("workspace_text", "Working on %s")
     self:set_option("line_number_text", "Line %s out of %s")
-    -- Blacklist table
     self:set_option("blacklist", {})
+    self:set_option("buttons", true)
 
     -- Get and check discord socket path
     local discord_socket_path = self:get_discord_socket_path()
@@ -655,6 +655,50 @@ function Presence:check_blacklist(buffer, parent_dirpath, project_dirpath)
     return false
 end
 
+-- Get either user-configured buttons or the create default "View Repository" button definition
+function Presence:get_buttons(buffer, parent_dirpath)
+    -- User configured a static buttons table
+    if type(self.options.buttons) == "table" then
+        local is_plural = #self.options.buttons > 1
+        local s = is_plural and "s" or ""
+        self.log:debug(string.format("Using custom-defined button%s", s))
+
+        return self.options.buttons
+    end
+
+    -- Retrieve the git repository URL
+    local repo_url
+    if parent_dirpath then
+        -- Escape quotes in the file path
+        local path = parent_dirpath:gsub([["]], [[\"]])
+        local git_url_cmd = "git config --get remote.origin.url"
+        local cmd = path
+            and string.format([[cd "%s" && %s]], path, git_url_cmd)
+            or git_url_cmd
+
+        -- Trim and coerce empty string value to null
+        repo_url = vim.trim(vim.fn.system(cmd))
+        repo_url = repo_url ~= "" and repo_url or nil
+    end
+
+    -- User configured a function to dynamically create buttons table
+    if type(self.options.buttons) == "function" then
+        self.log:debug("Using custom-defined button config function")
+        return self.options.buttons(buffer, repo_url)
+    end
+
+    -- Default behavior to show a "View Repository" button if the repo URL is valid
+    if repo_url then
+        self.log:debug(string.format("Adding button with repository URL: %s", repo_url))
+
+        return {
+            { label = "View Repository", url = repo_url },
+        }
+    end
+
+    return nil
+end
+
 -- Update Rich Presence for the provided vim buffer
 function Presence:update_for_buffer(buffer, should_debounce)
     -- Avoid unnecessary updates if the previous activity was for the current buffer
@@ -668,16 +712,20 @@ function Presence:update_for_buffer(buffer, should_debounce)
     local filename = self.get_filename(buffer, self.os.path_separator)
     local parent_dirpath = self.get_dir_path(buffer, self.os.path_separator)
     local extension = filename and self.get_file_extension(filename) or nil
-
     self.log:debug(string.format("Parsed filename %s with %s extension", filename, extension or "no"))
 
-    self.log:debug(string.format("Getting project name for %s...", parent_dirpath))
+    -- Return early if there is no valid activity status text to set
+    local status_text = self:get_status_text(filename)
+    if not status_text then
+        return self.log:debug("No status text for the given buffer, skipping...")
+    end
 
+    -- Get project information
+    self.log:debug(string.format("Getting project name for %s...", parent_dirpath))
     local project_name, project_path = self:get_project_name(parent_dirpath)
 
     -- Check for blacklist
     local is_blacklisted = #self.options.blacklist > 0 and self:check_blacklist(buffer, parent_dirpath, project_path)
-
     if is_blacklisted then
         self.last_activity.file = buffer
         self.log:debug("Either project or directory name is blacklisted, skipping...")
@@ -702,9 +750,9 @@ function Presence:update_for_buffer(buffer, should_debounce)
         self.log:debug(string.format("Using file asset: %s", vim.inspect(file_asset)))
     end
 
+    -- Construct activity asset information
     local file_text = description or name
     local neovim_image_text = self.options.neovim_image_text
-
     local use_file_as_main_image = self.options.main_image == "file"
     local assets = {
         large_image = use_file_as_main_image and asset_key or "neovim",
@@ -713,11 +761,6 @@ function Presence:update_for_buffer(buffer, should_debounce)
         small_text = use_file_as_main_image and neovim_image_text or file_text,
     }
 
-    local status_text = self:get_status_text(filename)
-    if not status_text then
-        return self.log:debug("No status text for the given buffer, skipping...")
-    end
-
     local activity = {
         state = status_text,
         assets = assets,
@@ -725,6 +768,15 @@ function Presence:update_for_buffer(buffer, should_debounce)
             start = relative_activity_set_at,
         },
     }
+
+    -- Add button that links to the git workspace remote origin url
+    if self.options.buttons ~= 0 then
+        local buttons = self:get_buttons(buffer, parent_dirpath)
+        if buttons then
+            self.log:debug(string.format("Attaching buttons to activity: %s", vim.inspect(buttons)))
+            activity.buttons = buttons
+        end
+    end
 
     -- Get the current line number and line count if the user has set the enable_line_number option
     if self.options.enable_line_number == 1 then
@@ -735,8 +787,8 @@ function Presence:update_for_buffer(buffer, should_debounce)
         local line_number_text = self.options.line_number_text
 
         activity.details = type(line_number_text) == "function"
-        and line_number_text(line_number, line_count)
-        or string.format(line_number_text, line_number, line_count)
+            and line_number_text(line_number, line_count)
+            or string.format(line_number_text, line_number, line_count)
 
         self.workspace = nil
         self.last_activity = {
@@ -748,11 +800,9 @@ function Presence:update_for_buffer(buffer, should_debounce)
         }
     else
         -- Include project details if available and if the user hasn't set the enable_line_number option
-
         local workspace_text = self.options.workspace_text
 
         if project_name then
-
             self.log:debug(string.format("Detected project: %s", project_name))
 
             activity.details = type(workspace_text) == "function"
@@ -779,7 +829,6 @@ function Presence:update_for_buffer(buffer, should_debounce)
                     updated_at = activity_set_at,
                 }
             end
-
         else
             self.log:debug("No project detected")
 
