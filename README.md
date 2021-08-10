@@ -4,7 +4,7 @@
 
 > Discord [Rich Presence](https://discord.com/rich-presence) plugin for [Neovim](https://neovim.io)
 
-<img src="https://gist.githubusercontent.com/andweeb/df3216345530234289b87cf5080c2c60/raw/4b07351547ae9a6bfdcbc1f915889b90a5349242/presence-demo.gif" alt="demo.gif">
+https://user-images.githubusercontent.com/10726590/128818164-43e56722-9afe-4051-8790-b04769abc188.mov
 
 ## Features
 * Light and unobtrusive
