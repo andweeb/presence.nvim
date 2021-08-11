@@ -4,7 +4,7 @@
 
 > Discord [Rich Presence](https://discord.com/rich-presence) plugin for [Neovim](https://neovim.io)
 
-https://user-images.githubusercontent.com/10726590/128818164-43e56722-9afe-4051-8790-b04769abc188.mov
+<img src="https://gist.githubusercontent.com/andweeb/df3216345530234289b87cf5080c2c60/raw/ad916fec8de921d0021801a0af877a5349621e7e/presence-demo-a.gif" width="100%" alt="demo.gif">
 
 ## Features
 * Light and unobtrusive
@@ -40,7 +40,7 @@ require("presence"):setup({
     log_level           = nil,                        -- Log messages at or above this level (one of the following: "debug", "info", "warn", "error")
     debounce_timeout    = 10,                         -- Number of seconds to debounce events (or calls to `:lua package.loaded.presence:update(<filename>, true)`)
     enable_line_number  = false,                      -- Displays the current line number instead of the current project
-    blacklist           = {},                         -- A list of strings or Lua patterns that disable Rich Presence if the current file name, path, or workspace match
+    blacklist           = {},                         -- A list of strings or Lua patterns that disable Rich Presence if the current file name, path, or workspace matches
     buttons             = true,                       -- Configure Rich Presence button(s), either a boolean to enable/disable, a static table (`{{ label = "<label>", url = "<url>" }, ...}`, or a function(buffer: string, repo_url: string|nil): table)
 
     -- Rich Presence text options
@@ -65,8 +65,8 @@ let g:presence_client_id           = "793271441293967371"
 let g:presence_log_level
 let g:presence_debounce_timeout    = 10
 let g:presence_enable_line_number  = 0
-let g:presence_buttons             = 1
 let g:presence_blacklist           = []
+let g:presence_buttons             = 1
 
 " Rich Presence text options
 let g:presence_editing_text        = "Editing %s"

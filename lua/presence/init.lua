@@ -634,19 +634,23 @@ function Presence:check_blacklist(buffer, parent_dirpath, project_dirpath)
 
     -- Loop over the values to see if the provided project/path is in the blacklist
     for _, val in pairs(blacklist_table) do
-        -- Match buffer
+        -- Matches buffer exactly
         if buffer:match(val) == buffer then return true end
-        -- Match parent
+        -- Match parent either by Lua pattern or by plain string
         local is_parent_directory_blacklisted = parent_dirpath and
-            (parent_dirpath:match(val) == parent_dirpath or
-            parent_dirname:match(val) == parent_dirname)
+            ((parent_dirpath:match(val) == parent_dirpath or
+            parent_dirname:match(val) == parent_dirname) or
+            (parent_dirpath:find(val, nil, true) or
+            parent_dirname:find(val, nil, true)))
         if is_parent_directory_blacklisted then
             return true
         end
-        -- Match project
+        -- Match project either by Lua pattern or by plain string
         local is_project_directory_blacklisted = project_dirpath and
-            (parent_dirpath:match(val) == project_dirpath or
-            parent_dirname:match(val) == project_dirname)
+            ((project_dirpath:match(val) == project_dirpath or
+            project_dirname:match(val) == project_dirname) or
+            (project_dirpath:find(val, nil, true) or
+            project_dirname:find(val, nil, true)))
         if is_project_directory_blacklisted then
             return true
         end
