@@ -691,14 +691,14 @@ function Presence:get_buttons(buffer, parent_dirpath)
         return self.options.buttons(buffer, repo_url)
     end
 
-    -- Url is in ssh format
-    local domain, user, repo = repo_url:match("^git@(.+):(.+)/(.+)$")
-    if domain and user and repo then
-        repo_url = string.format("https://%s/%s/%s", domain, user, repo)
-    end
-
     -- Default behavior to show a "View Repository" button if the repo URL is valid
     if repo_url then
+        -- Check if repo url is in ssh format
+        local domain, user, repo = repo_url:match("^git@(.+):(.+)/(.+)$")
+        if domain and user and repo then
+            repo_url = string.format("https://%s/%s/%s", domain, user, repo)
+        end
+
         self.log:debug(string.format("Adding button with repository URL: %s", repo_url))
 
         return {
