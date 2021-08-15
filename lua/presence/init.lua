@@ -710,7 +710,7 @@ function Presence:get_buttons(buffer, parent_dirpath)
             "ssh",
         }
         local protocol, relative = repo_url:match("^(.+)://(.+)$")
-        if not vim.tbl.contains(protocols, protocol) or not relative then
+        if not vim.tbl_contains(protocols, protocol) or not relative then
             self.log:debug(string.format("Repository URL uses invalid protocol: %s", repo_url))
             return nil
         end
