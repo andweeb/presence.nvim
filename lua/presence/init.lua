@@ -693,6 +693,37 @@ function Presence:get_buttons(buffer, parent_dirpath)
 
     -- Default behavior to show a "View Repository" button if the repo URL is valid
     if repo_url then
+
+        -- Check if repo url uses short ssh syntax
+        local domain, project = repo_url:match("^git@(.+):(.+)$")
+        if domain and project then
+            self.log:debug(string.format("Repository URL uses short ssh syntax: %s", repo_url))
+            repo_url = string.format("https://%s/%s", domain, project)
+        end
+
+        -- Check if repo url uses a valid protocol
+        local protocols = {
+            "ftp",
+            "git",
+            "http",
+            "https",
+            "ssh",
+        }
+        local protocol, relative = repo_url:match("^(.+)://(.+)$")
+        if not vim.tbl_contains(protocols, protocol) or not relative then
+            self.log:debug(string.format("Repository URL uses invalid protocol: %s", repo_url))
+            return nil
+        end
+
+        -- Check if repo url has the user specified
+        local user, path = relative:match("^(.+)@(.+)$")
+        if user and path then
+            self.log:debug(string.format("Repository URL has user specified: %s", repo_url))
+            repo_url = string.format("https://%s", path)
+        else
+            repo_url = string.format("https://%s", relative)
+        end
+
         self.log:debug(string.format("Adding button with repository URL: %s", repo_url))
 
         return {
