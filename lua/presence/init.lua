@@ -659,17 +659,6 @@ function Presence:check_blacklist(buffer, parent_dirpath, project_dirpath)
     return false
 end
 
--- Check if the table contains the value
-local function contains(list, value)
-    for _,v in ipairs(list) do
-        if value == v then
-            return true
-        end
-    end
-
-    return false
-end
-
 -- Get either user-configured buttons or the create default "View Repository" button definition
 function Presence:get_buttons(buffer, parent_dirpath)
     -- User configured a static buttons table
@@ -721,12 +710,12 @@ function Presence:get_buttons(buffer, parent_dirpath)
             "ssh",
         }
         local protocol, relative = repo_url:match("^(.+)://(.+)$")
-        if contains(protocols, protocol) == false or relative == nil then
+        if not vim.tbl.contains(protocols, protocol) or not relative then
             self.log:debug(string.format("Repository URL uses invalid protocol: %s", repo_url))
             return nil
         end
 
-        -- Check if repo url uses has the user specified
+        -- Check if repo url has the user specified
         local user, path = relative:match("^(.+)@(.+)$")
         if user and path then
             self.log:debug(string.format("Repository URL has user specified: %s", repo_url))
