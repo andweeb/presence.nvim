@@ -196,6 +196,7 @@ return {
     nim = { "Nim", "nim" },
     nix = { "Nix", "nix" },
     norg = { "Neorg", "neorg" },
+    org = { "Org", "org" },
     pb = { "Protobuf", "protobuf" },
     pcss = { "PostCSS", "postcss" },
     pgsql = { "PostgreSQL", "pgsql" },
