@@ -442,6 +442,17 @@ function Presence.get_file_extension(path)
     return path:match("^.+%.(.+)$")
 end
 
+-- Format any status text via options and support custom formatter functions
+function Presence:format_status_text(status_type, ...)
+    local option_name = string.format("%s_text", status_type)
+    local text_option = self.options[option_name]
+    if type(text_option) == "function" then
+        return text_option(...)
+    else
+        return string.format(text_option, ...)
+    end
+end
+
 -- Get the status text for the current buffer
 function Presence:get_status_text(filename)
     local file_explorer = file_explorers[vim.bo.filetype:match "[^%d]+"]
@@ -449,21 +460,21 @@ function Presence:get_status_text(filename)
     local plugin_manager = plugin_managers[vim.bo.filetype]
 
     if file_explorer then
-        return string.format(self.options.file_explorer_text, file_explorer)
+        return self:format_status_text("file_explorer", file_explorer)
     elseif plugin_manager then
-        return string.format(self.options.plugin_manager_text, plugin_manager)
+        return self:format_status_text("plugin_manager", plugin_manager)
     end
 
     if not filename or filename == "" then return nil end
 
     if vim.bo.modifiable and not vim.bo.readonly then
         if vim.bo.filetype == "gitcommit" then
-            return string.format(self.options.git_commit_text, filename)
+            return self:format_status_text("git_commit", filename)
         elseif filename then
-            return string.format(self.options.editing_text, filename)
+            return self:format_status_text("editing", filename)
         end
     elseif filename then
-        return string.format(self.options.reading_text, filename)
+        return self:format_status_text("reading", filename)
     end
 end
 
@@ -819,11 +830,9 @@ function Presence:update_for_buffer(buffer, should_debounce)
 
         local line_number = vim.api.nvim_win_get_cursor(0)[1]
         local line_count = vim.api.nvim_buf_line_count(0)
-        local line_number_text = self.options.line_number_text
+        local line_number_text = self:format_status_text("line_number", line_number, line_count)
 
-        activity.details = type(line_number_text) == "function"
-            and line_number_text(line_number, line_count)
-            or string.format(line_number_text, line_number, line_count)
+        activity.details = line_number_text
 
         self.workspace = nil
         self.last_activity = {
@@ -835,14 +844,10 @@ function Presence:update_for_buffer(buffer, should_debounce)
         }
     else
         -- Include project details if available and if the user hasn't set the enable_line_number option
-        local workspace_text = self.options.workspace_text
-
         if project_name then
             self.log:debug(string.format("Detected project: %s", project_name))
 
-            activity.details = type(workspace_text) == "function"
-                and workspace_text(project_name, buffer)
-                or string.format(workspace_text, project_name)
+            activity.details = self:format_status_text("workspace", project_name, buffer)
 
             self.workspace = project_path
             self.last_activity = {
@@ -879,6 +884,8 @@ function Presence:update_for_buffer(buffer, should_debounce)
             -- When no project is detected, set custom workspace text if:
             -- * The custom function returns custom workspace text
             -- * The configured workspace text does not contain a directive
+            -- (can't use the `format_status_text` method here)
+            local workspace_text = self.options.workspace_text
             if type(workspace_text) == "function" then
                 local custom_workspace_text = workspace_text(nil, buffer)
                 if custom_workspace_text then
