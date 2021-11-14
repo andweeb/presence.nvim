@@ -9,7 +9,7 @@
 ## Features
 * Light and unobtrusive
 * No Python/Node providers (or CoC) required
-* Cross-platform support: macOS, nixOS, Linux, Windows[\*](https://github.com/andweeb/presence.nvim/projects/1#card-60537963), WSL[\*](https://github.com/andweeb/presence.nvim/wiki/Rich-Presence-in-WSL)
+* Cross-platform support: macOS, nixOS, Linux[\*](#notes), Windows[\*](https://github.com/andweeb/presence.nvim/projects/1#card-60537963), WSL[\*](https://github.com/andweeb/presence.nvim/wiki/Rich-Presence-in-WSL)
 * Startup time is fast(er than other Rich Presence plugins, by [kind of a lot](https://github.com/andweeb/presence.nvim/wiki/Plugin-Comparisons))
 * Written in Lua and [highly configurable](#configuration) in Lua (but also configurable in VimL if you want)
 * Manages Rich Presence across multiple Neovim instances in various environments (tmux panes/windows, ssh sessions, terminal tabs/windows, etc.)
@@ -22,6 +22,7 @@ Use your favorite plugin manager
 #### Notes
 * Requires [Neovim 0.5](https://github.com/neovim/neovim/releases/tag/v0.5.0) or higher
 * Rich Presence should work automatically after installation (unless you're using WSL, in which case [see here](https://github.com/andweeb/presence.nvim/wiki/Rich-Presence-in-WSL))
+* If you're using an unofficial Discord package on Linux ([flatpak](https://flathub.org/apps/details/com.discordapp.Discord), [snap](https://snapcraft.io/discord), etc.), you may need to follow some instructions to expose the Discord socket on your system (e.g. [flatpak instructions](https://github.com/flathub/com.discordapp.Discord/wiki/Rich-Precense-(discord-rpc)))
 
 ## Configuration
 Configuration is not necessary for Rich Presence to work. But for those that want to override the default configs, the following options are available to configure in either Lua or VimL.
