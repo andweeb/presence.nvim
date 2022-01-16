@@ -229,6 +229,7 @@ return {
     rb = { "Ruby", "ruby" },
     re = { "Reason", "reason" },
     res = { "ReScript", "rescript" },
+    rkt = { "Racket", "racket"},
     rs = { "Rust", "rust" },
     sass = { "Sass", "sass" },
     scala = { "Scala", "scala" },
