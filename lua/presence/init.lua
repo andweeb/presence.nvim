@@ -63,8 +63,8 @@ Presence.workspaces = {}
 local log = require("lib.log")
 local msgpack = require("deps.msgpack")
 local serpent = require("deps.serpent")
-local file_assets = require("presence.file_assets")
 local file_explorers = require("presence.file_explorers")
+local default_file_assets = require("presence.file_assets")
 local plugin_managers = require("presence.plugin_managers")
 local Discord = require("presence.discord")
 
@@ -121,6 +121,13 @@ function Presence:setup(options)
     self:set_option("line_number_text", "Line %s out of %s")
     self:set_option("blacklist", {})
     self:set_option("buttons", true)
+    -- File assets options
+    self:set_option("file_assets", {})
+    for name, asset in pairs(default_file_assets) do
+        if not self.options.file_assets[name] then
+            self.options.file_assets[name] = asset
+        end
+    end
 
     -- Get and check discord socket path
     local discord_socket_path = self:get_discord_socket_path()
@@ -790,7 +797,7 @@ function Presence:update_for_buffer(buffer, should_debounce)
     local name = filename
     local asset_key = "code"
     local description = filename
-    local file_asset = file_assets[filename] or file_assets[extension]
+    local file_asset = self.options.file_assets[filename] or self.options.file_assets[extension]
     if file_asset then
         name, asset_key, description = unpack(file_asset)
         self.log:debug(string.format("Using file asset: %s", vim.inspect(file_asset)))
