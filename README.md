@@ -69,6 +69,7 @@ let g:presence_debounce_timeout    = 10
 let g:presence_enable_line_number  = 0
 let g:presence_blacklist           = []
 let g:presence_buttons             = 1
+let g:presence_file_assets         = {}
 
 " Rich Presence text options
 let g:presence_editing_text        = "Editing %s"
