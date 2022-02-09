@@ -525,18 +525,7 @@ function Presence:get_nvim_socket_paths(on_done)
             [[grep --color=never "nvim.*/0"]],
         }, "|")
     elseif self.os.name == "linux" then
-        if vim.fn.executable("netstat") == 1 then
-            -- Use `netstat` if available
-            cmd = table.concat({
-                "netstat -u",
-                [[grep --color=never "nvim.*/0"]],
-            }, "|")
-
-            -- Define netstat output parser
-            function parser.parse(data)
-                return data:match("%s(/.+)")
-            end
-        elseif vim.fn.executable("ss") == 1 then
+        if vim.fn.executable("ss") == 1 then
             -- Use `ss` if available
             cmd = table.concat({
                 "ss -lx",
@@ -546,6 +535,17 @@ function Presence:get_nvim_socket_paths(on_done)
             -- Define ss output parser
             function parser.parse(data)
                 return data:match("%s(/.-)%s")
+            end
+        elseif vim.fn.executable("netstat") == 1 then
+            -- Use `netstat` if available
+            cmd = table.concat({
+                "netstat -u",
+                [[grep --color=never "nvim.*/0"]],
+            }, "|")
+
+            -- Define netstat output parser
+            function parser.parse(data)
+                return data:match("%s(/.+)")
             end
         else
             local warning_msg = "Unable to get nvim socket paths: `netstat` and `ss` commands unavailable"
