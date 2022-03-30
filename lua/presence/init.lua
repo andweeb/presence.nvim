@@ -765,7 +765,7 @@ function Presence:update_for_buffer(buffer, should_debounce)
     local filename = self.get_filename(buffer, self.os.path_separator)
     local parent_dirpath = self.get_dir_path(buffer, self.os.path_separator)
     local extension = filename and self.get_file_extension(filename) or nil
-    self.log:debug(string.format("Parsed filename %s with %s extension", filename, extension or "no"))
+    self.log:debug(string.format("Parsed filename %s with %s extension", filename or "no", extension or "no"))
 
     -- Return early if there is no valid activity status text to set
     local status_text = self:get_status_text(filename)
