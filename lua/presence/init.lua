@@ -774,7 +774,7 @@ function Presence:update_for_buffer(buffer, should_debounce)
     end
 
     -- Get project information
-    self.log:debug(string.format("Getting project name for %s...", parent_dirpath))
+    self.log:debug(string.format("Getting project name for %s...", parent_dirpath or "no"))
     local project_name, project_path = self:get_project_name(parent_dirpath)
 
     -- Check for blacklist
