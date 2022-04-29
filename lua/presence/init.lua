@@ -365,9 +365,12 @@ function Presence:get_discord_socket_path()
     elseif self.os.name == "macos" then
         -- Use $TMPDIR for macOS
         local path = os.getenv("TMPDIR")
-        sock_path = path:match("/$")
-            and path..sock_name
-            or path.."/"..sock_name
+
+        if path then
+            sock_path = path:match("/$")
+                and path..sock_name
+                or path.."/"..sock_name
+        end
     elseif self.os.name == "linux" then
         -- Check various temp directory environment variables
         local env_vars = {
