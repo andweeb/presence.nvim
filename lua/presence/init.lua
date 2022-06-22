@@ -84,7 +84,7 @@ function Presence:setup(options)
     local os_name = self.get_os_name(uname)
     self.os = {
         name = os_name,
-        is_wsl = uname.release:find("Microsoft") ~= nil,
+        is_wsl = uname.release:lower():find("microsoft") ~= nil,
         path_separator = separator,
     }
 
