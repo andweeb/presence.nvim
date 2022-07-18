@@ -108,6 +108,8 @@ function Presence:setup(options)
     self:set_option("auto_update", 1)
     self:set_option("client_id", "793271441293967371")
     self:set_option("debounce_timeout", 10)
+    self:set_option("idle_timeout", 300)
+    self:set_option("idle_treatment", "update")
     self:set_option("main_image", "neovim")
     self:set_option("neovim_image_text", "The One True Text Editor")
     self:set_option("enable_line_number", false)
@@ -119,6 +121,7 @@ function Presence:setup(options)
     self:set_option("reading_text", "Reading %s")
     self:set_option("workspace_text", "Working on %s")
     self:set_option("line_number_text", "Line %s out of %s")
+    self:set_option("idling_text", "Idling...")
     self:set_option("blacklist", {})
     self:set_option("buttons", true)
     -- File assets options
@@ -919,7 +922,30 @@ function Presence:update_for_buffer(buffer, should_debounce)
         end
 
         self.log:info(string.format("Set activity in Discord for %s", filename))
+
+        -- Skip if idle treatment was configured to be disabled
+        if not self.options.idle_treatment then
+            self.log:debug("Skipping treatment for idle state...")
+            return
+        end
+
+        self.log:debug("Starting idle timer...")
+        self:start_idle_timer(function()
+            print("this is the idletimer :)")
+        end)
     end)
+end
+
+function Presence:start_idle_timer(callback)
+    -- Get idle timeout in milliseconds
+    local idle_timeout = self.options.idle_timeout * 1000
+
+    self.idle_timer = vim.fn.timer_start(idle_timeout, callback)
+end
+
+function Presence:cancel_idle_timer()
+    vim.fn.timer_stop(self.idle_timer)
+    self.idle_timer = nil
 end
 
 -- Update Rich Presence for the current or provided vim buffer for an authorized connection
@@ -1233,6 +1259,30 @@ function Presence:handle_buf_add()
 
         self:update()
     end)
+end
+
+-- TODO CursorMoved events
+function Presence:handle_cursor_moved()
+    self.log:debug("Handling CursorMoved event...")
+
+    -- Skip if idle treatment was configured to be disabled
+    if not self.options.idle_treatment then
+        self.log:debug("Skipping treatment for idle state...")
+        return
+    end
+
+    -- if self.get_current_buffer() == self.last_activity.file then
+    -- end
+
+    -- Initialize the timer
+    if not self.idle_timer then
+        print("Setting timer for %d seconds", self.options.idle_timeout * 1000)
+        self.idle_timer = vim.fn.timer_start(self.options.idle_timeout * 1000, function()
+            print("this is the idletimer :)")
+        end)
+        print(string.format("idle_timer: %s", self.idle_timer))
+        print(string.format("idle_timer info: %s", vim.inspect(vim.fn.timer_info(self.idle_timer))))
+    end
 end
 
 return Presence
