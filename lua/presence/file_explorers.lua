@@ -5,6 +5,6 @@ return {
     ["[defx] default-"] = "Defx",
     ["netrw"] = "Netrw",
     ["TelescopePrompt"] = "Telescope",
-    ['neo-tree'] = 'Neotree'
+    ['neo-tree'] = 'Neotree',
     ['fern'] = 'Fern'
 }
