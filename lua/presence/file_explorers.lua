@@ -4,5 +4,7 @@ return {
     ["NERD_tree_"] = "NERDTree",
     ["[defx] default-"] = "Defx",
     ["netrw"] = "Netrw",
-    ["TelescopePrompt"] = "Telescope"
+    ["TelescopePrompt"] = "Telescope",
+    ['neo-tree'] = 'Neotree',
+    ['fern'] = 'Fern'
 }
