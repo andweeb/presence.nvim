@@ -801,9 +801,8 @@ function Presence:update_for_buffer(buffer, should_debounce)
     end
 
     local activity_set_at = os.time()
-    -- If we shouldn't debounce and we trigger an activity, keep this value the same.
-    -- Otherwise set it to the current time.
-    local relative_activity_set_at = should_debounce and self.last_activity.relative_set_at or os.time()
+    -- Set the relative time if it does not already exist
+    local relative_activity_set_at = self.last_activity.relative_set_at or os.time()
 
     self.log:debug(string.format("Setting activity for %s...", buffer and #buffer > 0 and buffer or "unnamed buffer"))
 
