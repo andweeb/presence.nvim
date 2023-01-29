@@ -68,7 +68,17 @@ local default_file_assets = require("presence.file_assets")
 local plugin_managers = require("presence.plugin_managers")
 local Discord = require("presence.discord")
 
-function Presence:setup(options)
+function Presence:setup(...)
+    -- Support setup invocation via both dot and colon syntax.
+    -- To maintain backwards compatibility, colon syntax will still
+    -- be supported, but dot syntax should be recommended.
+    local args = {...}
+    local options = args[1]
+    if #args == 0 then
+        options = self
+        self = Presence
+    end
+
     options = options or {}
     self.options = options
 
