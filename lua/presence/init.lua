@@ -768,6 +768,12 @@ end
 
 -- Update Rich Presence for the provided vim buffer
 function Presence:update_for_buffer(buffer, should_debounce)
+
+    -- Since git always uses forward slashes, replace with backslash in Windows
+    if self.os.name == "windows" then
+        buffer = buffer:gsub("/", [[\]])
+    end
+
     -- Avoid unnecessary updates if the previous activity was for the current buffer
     -- (allow same-buffer updates when line numbers are enabled)
     if self.options.enable_line_number == 0 and self.last_activity.file == buffer then
