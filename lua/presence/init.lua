@@ -420,11 +420,15 @@ function Presence:get_project_name(file_path)
     -- Escape quotes in the file path
     file_path = file_path:gsub([["]], [[\"]])
 
+    -- Changes 'and' operator if nushell is the shell vim uses, otherwise keep it the same.
+    local and_operator =
+        self.get_filename(vim.o.shell, self.os.path_separator) == "nu" and ";" or "&&"
+
     -- TODO: Only checks for a git repository, could add more checks here
     -- Might want to run this in a background process depending on performance
     local project_path_cmd = "git rev-parse --show-toplevel"
     project_path_cmd = file_path
-        and string.format([[cd "%s" && %s]], file_path, project_path_cmd)
+        and string.format([[cd "%s" %s %s]], file_path, and_operator, project_path_cmd)
         or project_path_cmd
 
     local project_path = vim.fn.system(project_path_cmd)
@@ -702,6 +706,10 @@ function Presence:get_buttons(buffer, parent_dirpath)
         return self.options.buttons
     end
 
+    -- Changes 'and' operator if nushell is the shell vim uses, otherwise keep it the same.
+    local and_operator =
+        self.get_filename(vim.o.shell, self.os.path_separator) == "nu" and ";" or "&&"
+
     -- Retrieve the git repository URL
     local repo_url
     if parent_dirpath then
@@ -709,7 +717,7 @@ function Presence:get_buttons(buffer, parent_dirpath)
         local path = parent_dirpath:gsub([["]], [[\"]])
         local git_url_cmd = "git config --get remote.origin.url"
         local cmd = path
-            and string.format([[cd "%s" && %s]], path, git_url_cmd)
+            and string.format([[cd "%s" %s %s]], path, and_operator, git_url_cmd)
             or git_url_cmd
 
         -- Trim and coerce empty string value to null
