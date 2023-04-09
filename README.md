@@ -18,6 +18,7 @@
 Use your favorite plugin manager
 * [vim-plug](https://github.com/junegunn/vim-plug): `Plug 'andweeb/presence.nvim'`
 * [packer.nvim](https://github.com/wbthomason/packer.nvim): `use 'andweeb/presence.nvim'`
+* [lazy.nvim](https://github.com/folke/lazy.nvim): `{ "andweeb/presence.nvim", lazy = false },`
 
 #### Notes
 * Requires [Neovim 0.5](https://github.com/neovim/neovim/releases/tag/v0.5.0) or higher
