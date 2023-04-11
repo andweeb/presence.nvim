@@ -128,6 +128,7 @@ function Presence:setup(...)
     self:set_option("plugin_manager_text", "Managing plugins")
     self:set_option("reading_text", "Reading %s")
     self:set_option("workspace_text", "Working on %s")
+    self:set_option("terminal_text", "Using terminal")
     self:set_option("line_number_text", "Line %s out of %s")
     self:set_option("blacklist", {})
     self:set_option("buttons", true)
@@ -479,6 +480,7 @@ function Presence:get_status_text(filename)
     local file_explorer = file_explorers[vim.bo.filetype:match "[^%d]+"]
         or file_explorers[(filename or ""):match "[^%d]+"]
     local plugin_manager = plugin_managers[vim.bo.filetype]
+    local terminal = vim.api.nvim_get_mode()["mode"] == "t"
 
     if file_explorer then
         return self:format_status_text("file_explorer", file_explorer)
@@ -487,6 +489,10 @@ function Presence:get_status_text(filename)
     end
 
     if not filename or filename == "" then return nil end
+    
+    if terminal then
+        return self:format_status_text("terminal", terminal)
+    end
 
     if vim.bo.modifiable and not vim.bo.readonly then
         if vim.bo.filetype == "gitcommit" then
