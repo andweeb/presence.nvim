@@ -119,6 +119,7 @@ function Presence:setup(...)
     self:set_option("client_id", "793271441293967371")
     self:set_option("debounce_timeout", 10)
     self:set_option("neovim_image_text", "The One True Text Editor")
+    self:set_option("main_image", "neovim")
     self:set_option("enable_line_number", false)
     -- Status text options
     self:set_option("editing_text", "Editing %s")
