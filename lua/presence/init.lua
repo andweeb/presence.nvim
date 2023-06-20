@@ -112,7 +112,7 @@ function Presence:setup(options)
     self:set_option("neovim_image_text", "The One True Text Editor")
     self:set_option("enable_line_number", false)
     -- Status text options
-    self:set_option("editing_text", "Editing %s")
+    self:set_option("editing_text", "Editing %s %s")
     self:set_option("file_explorer_text", "Browsing %s")
     self:set_option("git_commit_text", "Committing changes")
     self:set_option("plugin_manager_text", "Managing plugins")
@@ -465,7 +465,7 @@ function Presence:format_status_text(status_type, ...)
 end
 
 -- Get the status text for the current buffer
-function Presence:get_status_text(filename)
+function Presence:get_status_text(filename, workspace_name)
     local file_explorer = file_explorers[vim.bo.filetype:match "[^%d]+"]
         or file_explorers[(filename or ""):match "[^%d]+"]
     local plugin_manager = plugin_managers[vim.bo.filetype]
@@ -477,12 +477,17 @@ function Presence:get_status_text(filename)
     end
 
     if not filename or filename == "" then return nil end
+    if workspace_name ~= nil and workspace_name ~= "" then
+        workspace_name = "in " .. workspace_name
+    else
+        workspace_name = ""
+    end
 
     if vim.bo.modifiable and not vim.bo.readonly then
         if vim.bo.filetype == "gitcommit" then
             return self:format_status_text("git_commit", filename)
         elseif filename then
-            return self:format_status_text("editing", filename)
+            return self:format_status_text("editing", filename, workspace_name)
         end
     elseif filename then
         return self:format_status_text("reading", filename)
@@ -771,15 +776,16 @@ function Presence:update_for_buffer(buffer, should_debounce)
     local extension = filename and self.get_file_extension(filename) or nil
     self.log:debug(string.format("Parsed filename %s with %s extension", filename, extension or "no"))
 
-    -- Return early if there is no valid activity status text to set
-    local status_text = self:get_status_text(filename)
-    if not status_text then
-        return self.log:debug("No status text for the given buffer, skipping...")
-    end
 
     -- Get project information
     self.log:debug(string.format("Getting project name for %s...", parent_dirpath))
     local project_name, project_path = self:get_project_name(parent_dirpath)
+
+    -- Return early if there is no valid activity status text to set
+    local status_text = self:get_status_text(filename, project_name)
+    if not status_text then
+        return self.log:debug("No status text for the given buffer, skipping...")
+    end
 
     -- Check for blacklist
     local is_blacklisted = #self.options.blacklist > 0 and self:check_blacklist(buffer, parent_dirpath, project_path)
