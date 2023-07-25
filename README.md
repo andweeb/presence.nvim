@@ -42,6 +42,7 @@ require("presence").setup({
     debounce_timeout    = 10,                         -- Number of seconds to debounce events (or calls to `:lua package.loaded.presence:update(<filename>, true)`)
     enable_line_number  = false,                      -- Displays the current line number instead of the current project
     blacklist           = {},                         -- A list of strings or Lua patterns that disable Rich Presence if the current file name, path, or workspace matches
+    blacklist_repos     = {},                         -- A blacklist that applies to git remote repo URLs instead of folder/file names
     buttons             = true,                       -- Configure Rich Presence button(s), either a boolean to enable/disable, a static table (`{{ label = "<label>", url = "<url>" }, ...}`, or a function(buffer: string, repo_url: string|nil): table)
     file_assets         = {},                         -- Custom file asset definitions keyed by file names and extensions (see default config at `lua/presence/file_assets.lua` for reference)
     show_time           = true,                       -- Show the timer
@@ -69,6 +70,7 @@ let g:presence_log_level
 let g:presence_debounce_timeout    = 10
 let g:presence_enable_line_number  = 0
 let g:presence_blacklist           = []
+let g:presence_blacklist_repos     = []
 let g:presence_buttons             = 1
 let g:presence_file_assets         = {}
 let g:presence_show_time           = 1

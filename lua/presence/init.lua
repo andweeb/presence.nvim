@@ -130,6 +130,7 @@ function Presence:setup(...)
     self:set_option("workspace_text", "Working on %s")
     self:set_option("line_number_text", "Line %s out of %s")
     self:set_option("blacklist", {})
+    self:set_option("blacklist_repos", {})
     self:set_option("buttons", true)
     self:set_option("show_time", true)
     -- File assets options
@@ -662,7 +663,8 @@ function Presence:check_blacklist(buffer, parent_dirpath, project_dirpath)
     end
 
     -- Blacklist table
-    local blacklist_table = self.options["blacklist"]
+    local blacklist_table = self.options["blacklist"] or {}
+    local blacklist_repos_table = self.options["blacklist_repos"] or {}
 
     -- Loop over the values to see if the provided project/path is in the blacklist
     for _, val in pairs(blacklist_table) do
@@ -677,6 +679,7 @@ function Presence:check_blacklist(buffer, parent_dirpath, project_dirpath)
         if is_parent_directory_blacklisted then
             return true
         end
+
         -- Match project either by Lua pattern or by plain string
         local is_project_directory_blacklisted = project_dirpath and
             ((project_dirpath:match(val) == project_dirpath or
@@ -688,8 +691,51 @@ function Presence:check_blacklist(buffer, parent_dirpath, project_dirpath)
         end
     end
 
+
+    -- check against git repo blacklist
+    local git_repo = Presence:get_git_repo_url(parent_dirpath)
+    if git_repo then
+      self.log:debug(string.format("Checking git repo blacklist for %s", git_repo))
+    else
+      self.log:debug("No git repo, skipping blacklist check")
+      return false
+    end
+
+
+    for _, val in pairs(blacklist_repos_table) do
+        if buffer:match(val) == buffer then return true end
+
+        local is_git_repo_blacklisted = git_repo and
+            ((git_repo:match(val) == git_repo) == git_repo or
+            (git_repo:find(val, nil, true)))
+
+        if is_git_repo_blacklisted then
+            return true
+        end
+    end
+
     return false
 end
+
+function Presence:get_git_repo_url(parent_dirpath)
+    local repo_url
+
+    if parent_dirpath then
+        -- Escape quotes in the file path
+        local path = parent_dirpath:gsub([["]], [[\"]])
+        local git_url_cmd = "git config --get remote.origin.url"
+        local cmd = path
+            and string.format([[cd "%s" && %s]], path, git_url_cmd)
+            or git_url_cmd
+
+        -- Trim and coerce empty string value to null
+        repo_url = vim.trim(vim.fn.system(cmd))
+        repo_url = repo_url ~= "" and repo_url or nil
+
+        return repo_url
+    end
+end
+
 
 -- Get either user-configured buttons or the create default "View Repository" button definition
 function Presence:get_buttons(buffer, parent_dirpath)
@@ -703,19 +749,7 @@ function Presence:get_buttons(buffer, parent_dirpath)
     end
 
     -- Retrieve the git repository URL
-    local repo_url
-    if parent_dirpath then
-        -- Escape quotes in the file path
-        local path = parent_dirpath:gsub([["]], [[\"]])
-        local git_url_cmd = "git config --get remote.origin.url"
-        local cmd = path
-            and string.format([[cd "%s" && %s]], path, git_url_cmd)
-            or git_url_cmd
-
-        -- Trim and coerce empty string value to null
-        repo_url = vim.trim(vim.fn.system(cmd))
-        repo_url = repo_url ~= "" and repo_url or nil
-    end
+    local repo_url = Presence:get_git_repo_url(parent_dirpath)
 
     -- User configured a function to dynamically create buttons table
     if type(self.options.buttons) == "function" then
@@ -792,10 +826,11 @@ function Presence:update_for_buffer(buffer, should_debounce)
     local project_name, project_path = self:get_project_name(parent_dirpath)
 
     -- Check for blacklist
-    local is_blacklisted = #self.options.blacklist > 0 and self:check_blacklist(buffer, parent_dirpath, project_path)
+    local blacklist_not_empty = (#self.options.blacklist > 0 or #self.options.blacklist_repos > 0)
+    local is_blacklisted = blacklist_not_empty and self:check_blacklist(buffer, parent_dirpath, project_path)
     if is_blacklisted then
         self.last_activity.file = buffer
-        self.log:debug("Either project or directory name is blacklisted, skipping...")
+        self.log:debug("Either project, directory name, or repository URL is blacklisted. Skipping...")
         self:cancel()
         return
     end
