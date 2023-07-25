@@ -130,6 +130,7 @@ function Presence:setup(...)
     self:set_option("workspace_text", "Working on %s")
     self:set_option("line_number_text", "Line %s out of %s")
     self:set_option("blacklist", {})
+    self:set_option("blacklist_repos", {})
     self:set_option("buttons", true)
     self:set_option("show_time", true)
     -- File assets options
@@ -661,10 +662,9 @@ function Presence:check_blacklist(buffer, parent_dirpath, project_dirpath)
         project_dirname = self.get_filename(project_dirpath, self.os.path_separator)
     end
 
-    print(git_repo)
-
     -- Blacklist table
-    local blacklist_table = self.options["blacklist"]
+    local blacklist_table = self.options["blacklist"] or {}
+    local blacklist_repos_table = self.options["blacklist_repos"] or {}
 
     -- Loop over the values to see if the provided project/path is in the blacklist
     for _, val in pairs(blacklist_table) do
@@ -694,7 +694,12 @@ function Presence:check_blacklist(buffer, parent_dirpath, project_dirpath)
 
     -- check against git repo blacklist
     local git_repo = Presence:get_git_repo_url(parent_dirpath)
-    local blacklist_repos_table = self.options["blacklist_repos"] or {}
+    if git_repo then
+      self.log:debug(string.format("Checking git repo blacklist for %s", git_repo))
+    else
+      self.log:debug("No git repo, skipping blacklist check")
+      return false
+    end
 
 
     for _, val in pairs(blacklist_repos_table) do
@@ -821,10 +826,11 @@ function Presence:update_for_buffer(buffer, should_debounce)
     local project_name, project_path = self:get_project_name(parent_dirpath)
 
     -- Check for blacklist
-    local is_blacklisted = #self.options.blacklist > 0 and self:check_blacklist(buffer, parent_dirpath, project_path)
+    local blacklist_not_empty = (#self.options.blacklist > 0 or #self.options.blacklist_repos > 0)
+    local is_blacklisted = blacklist_not_empty and self:check_blacklist(buffer, parent_dirpath, project_path)
     if is_blacklisted then
         self.last_activity.file = buffer
-        self.log:debug("Either project or directory name is blacklisted, skipping...")
+        self.log:debug("Either project, directory name, or repository URL is blacklisted. Skipping...")
         self:cancel()
         return
     end
