@@ -651,15 +651,19 @@ end
 function Presence:check_blacklist(buffer, parent_dirpath, project_dirpath)
     local parent_dirname = nil
     local project_dirname = nil
+    local git_repo
 
     -- Parse parent/project directory name
     if parent_dirpath then
         parent_dirname = self.get_filename(parent_dirpath, self.os.path_separator)
+        git_repo = Presence:get_git_repo_url(parent_dirpath)
     end
 
     if project_dirpath then
         project_dirname = self.get_filename(project_dirpath, self.os.path_separator)
     end
+
+    print(git_repo)
 
     -- Blacklist table
     local blacklist_table = self.options["blacklist"]
@@ -677,6 +681,15 @@ function Presence:check_blacklist(buffer, parent_dirpath, project_dirpath)
         if is_parent_directory_blacklisted then
             return true
         end
+
+        -- Match project either by Lua pattern or by plain string
+        local is_git_repo_blacklisted = git_repo and
+            ((git_repo:match(val) == git_repo) == git_repo or
+            (git_repo:find(val, nil, true)))
+        if is_git_repo_blacklisted then
+            return true
+        end
+
         -- Match project either by Lua pattern or by plain string
         local is_project_directory_blacklisted = project_dirpath and
             ((project_dirpath:match(val) == project_dirpath or
@@ -691,6 +704,26 @@ function Presence:check_blacklist(buffer, parent_dirpath, project_dirpath)
     return false
 end
 
+function Presence:get_git_repo_url(parent_dirpath)
+    local repo_url
+
+    if parent_dirpath then
+        -- Escape quotes in the file path
+        local path = parent_dirpath:gsub([["]], [[\"]])
+        local git_url_cmd = "git config --get remote.origin.url"
+        local cmd = path
+            and string.format([[cd "%s" && %s]], path, git_url_cmd)
+            or git_url_cmd
+
+        -- Trim and coerce empty string value to null
+        repo_url = vim.trim(vim.fn.system(cmd))
+        repo_url = repo_url ~= "" and repo_url or nil
+
+        return repo_url
+    end
+end
+
+
 -- Get either user-configured buttons or the create default "View Repository" button definition
 function Presence:get_buttons(buffer, parent_dirpath)
     -- User configured a static buttons table
@@ -703,19 +736,7 @@ function Presence:get_buttons(buffer, parent_dirpath)
     end
 
     -- Retrieve the git repository URL
-    local repo_url
-    if parent_dirpath then
-        -- Escape quotes in the file path
-        local path = parent_dirpath:gsub([["]], [[\"]])
-        local git_url_cmd = "git config --get remote.origin.url"
-        local cmd = path
-            and string.format([[cd "%s" && %s]], path, git_url_cmd)
-            or git_url_cmd
-
-        -- Trim and coerce empty string value to null
-        repo_url = vim.trim(vim.fn.system(cmd))
-        repo_url = repo_url ~= "" and repo_url or nil
-    end
+    local repo_url = Presence:get_git_repo_url(parent_dirpath)
 
     -- User configured a function to dynamically create buttons table
     if type(self.options.buttons) == "function" then
