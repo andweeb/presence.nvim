@@ -651,12 +651,10 @@ end
 function Presence:check_blacklist(buffer, parent_dirpath, project_dirpath)
     local parent_dirname = nil
     local project_dirname = nil
-    local git_repo
 
     -- Parse parent/project directory name
     if parent_dirpath then
         parent_dirname = self.get_filename(parent_dirpath, self.os.path_separator)
-        git_repo = Presence:get_git_repo_url(parent_dirpath)
     end
 
     if project_dirpath then
@@ -683,20 +681,30 @@ function Presence:check_blacklist(buffer, parent_dirpath, project_dirpath)
         end
 
         -- Match project either by Lua pattern or by plain string
-        local is_git_repo_blacklisted = git_repo and
-            ((git_repo:match(val) == git_repo) == git_repo or
-            (git_repo:find(val, nil, true)))
-        if is_git_repo_blacklisted then
-            return true
-        end
-
-        -- Match project either by Lua pattern or by plain string
         local is_project_directory_blacklisted = project_dirpath and
             ((project_dirpath:match(val) == project_dirpath or
             project_dirname:match(val) == project_dirname) or
             (project_dirpath:find(val, nil, true) or
             project_dirname:find(val, nil, true)))
         if is_project_directory_blacklisted then
+            return true
+        end
+    end
+
+
+    -- check against git repo blacklist
+    local git_repo = Presence:get_git_repo_url(parent_dirpath)
+    local blacklist_repos_table = self.options["blacklist_repos"] or {}
+
+
+    for _, val in pairs(blacklist_repos_table) do
+        if buffer:match(val) == buffer then return true end
+
+        local is_git_repo_blacklisted = git_repo and
+            ((git_repo:match(val) == git_repo) == git_repo or
+            (git_repo:find(val, nil, true)))
+
+        if is_git_repo_blacklisted then
             return true
         end
     end
