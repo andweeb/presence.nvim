@@ -1246,4 +1246,13 @@ function Presence:handle_buf_add()
     end)
 end
 
+-- CursorMoved and CursorMovedI events update the line number
+function Presence:handle_cursor_moved()
+    self.log:debug("Handling CursorMoved/CursorMovedI event...")
+
+    if self.options.enable_line_number == 1 then
+        self:update(nil, true)
+    end
+end
+
 return Presence

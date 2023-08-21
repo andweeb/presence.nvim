@@ -10,6 +10,8 @@ function presence#SetAutoCmds()
             autocmd WinLeave * lua package.loaded.presence:handle_win_leave()
             autocmd BufEnter * lua package.loaded.presence:handle_buf_enter()
             autocmd BufAdd * lua package.loaded.presence:handle_buf_add()
+            autocmd CursorMoved * lua package.loaded.presence:handle_cursor_moved()
+            autocmd CursorMovedI * lua package.loaded.presence:handle_cursor_moved()
         endif
     augroup END
 endfunction
