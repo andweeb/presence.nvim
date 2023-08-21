@@ -945,7 +945,7 @@ Presence.update = Presence.discord_event(function(self, buffer, should_debounce)
     local should_skip =
         should_debounce and
         debounce_timeout and
-        last_updated_at and os.time() - last_updated_at <= debounce_timeout
+        last_updated_at and os.time() - last_updated_at < debounce_timeout
 
     if should_skip then
         local message_fmt = "Last activity sent was within %d seconds ago, skipping..."
