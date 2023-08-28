@@ -767,7 +767,7 @@ function Presence:get_buttons(buffer, parent_dirpath)
 end
 
 -- Update Rich Presence for the provided vim buffer
-function Presence:update_for_buffer(buffer, should_debounce)
+function Presence:update_for_buffer(buffer)
     -- Avoid unnecessary updates if the previous activity was for the current buffer
     -- (allow same-buffer updates when line numbers are enabled)
     if self.options.enable_line_number == 0 and self.last_activity.file == buffer then
@@ -802,7 +802,7 @@ function Presence:update_for_buffer(buffer, should_debounce)
 
     local activity_set_at = os.time()
     -- Set the relative time if it does not already exist
-    local relative_activity_set_at = self.last_activity.relative_set_at or os.time()
+    local relative_activity_set_at = self.last_activity.relative_set_at
 
     self.log:debug(string.format("Setting activity for %s...", buffer and #buffer > 0 and buffer or "unnamed buffer"))
 
@@ -880,15 +880,15 @@ function Presence:update_for_buffer(buffer, should_debounce)
 
             if self.workspaces[project_path] then
                 self.workspaces[project_path].updated_at = activity_set_at
-                activity.timestamps = self.options.show_time == 1 and {
-                    start = self.workspaces[project_path].started_at,
-                } or nil
             else
                 self.workspaces[project_path] = {
                     started_at = activity_set_at,
                     updated_at = activity_set_at,
                 }
             end
+            activity.timestamps = self.options.show_time == 1 and {
+                start = self.workspaces[project_path].started_at,
+            } or nil
         else
             self.log:debug("No project detected")
 
@@ -1171,7 +1171,7 @@ end
 -- TextChanged events debounce current buffer presence updates
 function Presence:handle_text_changed()
     self.log:debug("Handling TextChanged event...")
-    self:update(nil, true)
+    self:update()
 end
 
 -- VimLeavePre events unregister the leaving instance to all peers and sets activity for the first peer
