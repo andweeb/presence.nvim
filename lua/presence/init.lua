@@ -802,7 +802,7 @@ function Presence:update_for_buffer(buffer)
 
     local activity_set_at = os.time()
     -- Set the relative time if it does not already exist
-    local relative_activity_set_at = self.last_activity.relative_set_at
+    local relative_activity_set_at = self.last_activity.relative_set_at or os.time()
 
     self.log:debug(string.format("Setting activity for %s...", buffer and #buffer > 0 and buffer or "unnamed buffer"))
 
@@ -953,10 +953,10 @@ Presence.update = Presence.discord_event(function(self, buffer, should_debounce)
     end
 
     if buffer then
-        self:update_for_buffer(buffer, should_debounce)
+        self:update_for_buffer(buffer)
     else
         vim.schedule(function()
-            self:update_for_buffer(self.get_current_buffer(), should_debounce)
+            self:update_for_buffer(self.get_current_buffer())
         end)
     end
 end)
@@ -1171,7 +1171,7 @@ end
 -- TextChanged events debounce current buffer presence updates
 function Presence:handle_text_changed()
     self.log:debug("Handling TextChanged event...")
-    self:update()
+    self:update(nil, true)
 end
 
 -- VimLeavePre events unregister the leaving instance to all peers and sets activity for the first peer
