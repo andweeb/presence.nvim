@@ -397,6 +397,8 @@ function Presence:get_discord_socket_path()
             xdg_path = xdg_path and xdg_path:match("/$") and xdg_path.."app/com.discordapp.Discord" or xdg_path.."/app/com.discordapp.Discord"
             self.log:debug(string.format("Using XDG runtime path: %s", xdg_path))
             sock_path = xdg_path:match("/$") and xdg_path..sock_name or xdg_path.."/"..sock_name
+            -- Check if the socket path exists and if not set it to nil
+            sock_path = vim.fn.filereadable(sock_path) == 1 and sock_path or nil
         end
 
         -- If the socket path is still nil, check other temp directories
