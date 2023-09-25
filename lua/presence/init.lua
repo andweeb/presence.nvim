@@ -391,13 +391,24 @@ function Presence:get_discord_socket_path()
             "TMPDIR",
         }
 
-        for i = 1, #env_vars do
-            local var = env_vars[i]
-            local path = os.getenv(var)
-            if path then
-                self.log:debug(string.format("Using runtime path: %s", path))
-                sock_path = path:match("/$") and path..sock_name or path.."/"..sock_name
-                break
+        local xdg_path = os.getenv("XDG_RUNTIME_DIR")
+        if xdg_path then
+            -- Append app/com.discordapp.Discord/ to the end of the path (make sure that / is at the end of xdg_path before appending)
+            xdg_path = xdg_path and xdg_path:match("/$") and xdg_path.."app/com.discordapp.Discord" or xdg_path.."/app/com.discordapp.Discord"
+            self.log:debug(string.format("Using XDG runtime path: %s", xdg_path))
+            sock_path = xdg_path:match("/$") and xdg_path..sock_name or xdg_path.."/"..sock_name
+        end
+
+        -- If the socket path is still nil, check other temp directories
+        if not sock_path then
+            for i = 1, #env_vars do
+                local var = env_vars[i]
+                local path = os.getenv(var)
+                if path then
+                    self.log:debug(string.format("Using runtime path: %s", path))
+                    sock_path = path:match("/$") and path..sock_name or path.."/"..sock_name
+                    break
+                end
             end
         end
     end
