@@ -1,3 +1,5 @@
+[![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-%23FE5196?logo=conventionalcommits&logoColor=white)](https://conventionalcommits.org)
+
 <img src="https://gist.githubusercontent.com/andweeb/df3216345530234289b87cf5080c2c60/raw/8de399cfed82c137f793e9f580027b5246bc4379/presence.nvim.png" alt="presence.nvim">&#x200B;
 
 **[Features](#features)** | **[Installation](#installation)** | **[Configuration](#configuration)** | **[Troubleshooting](#troubleshooting)** | **[Development](#development)** | **[Contributing](#contributing)**
@@ -137,8 +139,11 @@ errors: `luacheck lua`
 
 ## Contributing
 
+**Please use [Conventional Commits](https://www.conventionalcommits.org/) if you want to contribute.
+It makes everyones jobs easier.**
+
 Pull requests are very welcome, feel free to open an issue to work on
-or message [@jiriks74](https://discordapp.com/users/517810049360461837) on my
+or message [me (@jiriks74)](https://discordapp.com/users/517810049360461837) on my
 [Discord server](https://discord.gg/cCq3qcB4jB)!
 
 Asset additions and changes are also welcome! Supported file types can be found in
