@@ -1,0 +1,7 @@
+- uses: actions/checkout@v3
+- uses: JohnnyMorganz/stylua-action@v3
+  with:
+    token: ${{ secrets.GITHUB_TOKEN }}
+    version: v0.8.2 # NOTE: we recommend pinning to a specific version in case of formatting changes
+    # CLI arguments
+    args: --check .
