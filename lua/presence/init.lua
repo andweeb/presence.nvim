@@ -183,7 +183,7 @@ end
 
 -- Normalize the OS name from uname
 function Presence.get_os_name(uname)
-    if uname.sysname:find("Windows") then
+    if uname.sysname:find("Windows") or uname.sysname:find("MINGW") then
         return "windows"
     elseif uname.sysname:find("Darwin") then
         return "macos"
