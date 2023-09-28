@@ -142,6 +142,8 @@ errors: `luacheck lua`
 **Please use [Conventional Commits](https://www.conventionalcommits.org/) if you want to contribute.
 It makes everyones jobs easier.**
 
+**This project uses [StyLua](https://github.com/JohnnyMorganz/StyLua). Please format your code using StyLua for better readability**
+
 Pull requests are very welcome, feel free to open an issue to work on
 or message [me (@jiriks74)](https://discordapp.com/users/517810049360461837) on my
 [Discord server](https://discord.gg/cCq3qcB4jB)!
