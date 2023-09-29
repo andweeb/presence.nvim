@@ -50,15 +50,8 @@
 -- }
 --
 local Presence = {}
-Presence.is_authorized = false
-Presence.is_authorizing = false
-Presence.is_connected = false
-Presence.is_connecting = false
-Presence.last_activity = {}
-Presence.peers = {}
-Presence.socket = vim.v.servername
-Presence.workspace = nil
-Presence.workspaces = {}
+
+
 
 local log = require("lib.log")
 local msgpack = require("deps.msgpack")
@@ -68,11 +61,26 @@ local default_file_assets = require("presence.file_assets")
 local plugin_managers = require("presence.plugin_managers")
 local Discord = require("presence.discord")
 
+function Presence:reset()
+    self.is_authorized = false
+    self.is_authorizing = false
+    self.toggle_connect = true
+    self.is_connected = false
+    self.is_connecting = false
+    self.last_activity = {}
+    self.peers = {}
+    self.socket = vim.v.servername
+    self.workspace = nil
+    self.workspaces = {}
+end
+
 function Presence:setup(...)
     -- Support setup invocation via both dot and colon syntax.
     -- To maintain backwards compatibility, colon syntax will still
     -- be supported, but dot syntax should be recommended.
-    local args = {...}
+    
+    self:reset()
+    local args = { ... }
     local options = args[1]
     if #args == 0 then
         options = self
@@ -89,7 +97,7 @@ function Presence:setup(...)
     -- Get operating system information including path separator
     -- http://www.lua.org/manual/5.3/manual.html#pdf-package.config
     local uname = vim.loop.os_uname()
-    local separator = package.config:sub(1,1)
+    local separator = package.config:sub(1, 1)
     local wsl_distro_name = os.getenv("WSL_DISTRO_NAME")
     local os_name = self.get_os_name(uname)
     self.os = {
@@ -102,7 +110,7 @@ function Presence:setup(...)
     local setup_message_fmt = "Setting up plugin for %s"
     if self.os.name then
         local setup_message = self.os.is_wsl
-            and string.format(setup_message_fmt.." in WSL (%s)", self.os.name, vim.inspect(wsl_distro_name))
+            and string.format(setup_message_fmt .. " in WSL (%s)", self.os.name, vim.inspect(wsl_distro_name))
             or string.format(setup_message_fmt, self.os.name)
         self.log:debug(setup_message)
     else
@@ -175,6 +183,20 @@ function Presence:setup(...)
 
     -- Register self to any remote Neovim instances
     self:register_self()
+
+
+    -- Setup Commands to control presence
+    vim.api.nvim_create_user_command('PresenceDisable', function() self:stop() end, {})
+    vim.api.nvim_create_user_command('PresenceEnable', function() self:connect() end, {})
+    vim.api.nvim_create_user_command('PresenceToggle', function()
+        if self.toggle_connect then
+            self:stop()
+        else
+            self:connect()
+        end
+    end
+    , {})
+
 
     return self
 end
@@ -310,6 +332,7 @@ function Presence:call_remote_method(socket, name, args)
 end
 
 function Presence:connect(on_done)
+    self:reset()
     self.log:debug("Connecting to Discord...")
 
     self.is_connecting = true
@@ -321,10 +344,10 @@ function Presence:connect(on_done)
         if err == "EISCONN" then
             self.log:info("Already connected to Discord")
         elseif err == "ECONNREFUSED" then
-            self.log:warn("Failed to connect to Discord: "..err.." (is Discord running?)")
+            self.log:warn("Failed to connect to Discord: " .. err .. " (is Discord running?)")
             return
         elseif err then
-            self.log:error("Failed to connect to Discord: "..err)
+            self.log:error("Failed to connect to Discord: " .. err)
             return
         end
 
@@ -350,7 +373,7 @@ function Presence:authorize(on_done)
             self.is_authorized = true
             return on_done()
         elseif err then
-            self.log:error("Failed to authorize with Discord: "..err)
+            self.log:error("Failed to authorize with Discord: " .. err)
             self.is_authorized = false
             return
         end
@@ -369,18 +392,18 @@ function Presence:get_discord_socket_path()
 
     if self.os.is_wsl then
         -- Use socket created by relay for WSL
-        sock_path = "/var/run/"..sock_name
+        sock_path = "/var/run/" .. sock_name
     elseif self.os.name == "windows" then
         -- Use named pipe in NPFS for Windows
-        sock_path = [[\\.\pipe\]]..sock_name
+        sock_path = [[\\.\pipe\]] .. sock_name
     elseif self.os.name == "macos" then
         -- Use $TMPDIR for macOS
         local path = os.getenv("TMPDIR")
 
         if path then
             sock_path = path:match("/$")
-                and path..sock_name
-                or path.."/"..sock_name
+                and path .. sock_name
+                or path .. "/" .. sock_name
         end
     elseif self.os.name == "linux" then
         -- Check various temp directory environment variables
@@ -396,7 +419,7 @@ function Presence:get_discord_socket_path()
             local path = os.getenv(var)
             if path then
                 self.log:debug(string.format("Using runtime path: %s", path))
-                sock_path = path:match("/$") and path..sock_name or path.."/"..sock_name
+                sock_path = path:match("/$") and path .. sock_name or path .. "/" .. sock_name
                 break
             end
         end
@@ -613,7 +636,7 @@ function Presence.discord_event(on_ready)
             return
         end
 
-        local args = {...}
+        local args = { ... }
         local callback = function()
             on_ready(self, unpack(args))
         end
@@ -725,7 +748,6 @@ function Presence:get_buttons(buffer, parent_dirpath)
 
     -- Default behavior to show a "View Repository" button if the repo URL is valid
     if repo_url then
-
         -- Check if repo url uses short ssh syntax
         local domain, project = repo_url:match("^git@(.+):(.+)$")
         if domain and project then
@@ -832,8 +854,8 @@ function Presence:update_for_buffer(buffer, should_debounce)
         state = status_text,
         assets = assets,
         timestamps = self.options.show_time == 1 and {
-            start = relative_activity_set_at,
-        } or nil,
+                start = relative_activity_set_at,
+            } or nil,
     }
 
     -- Add button that links to the git workspace remote origin url
@@ -882,8 +904,8 @@ function Presence:update_for_buffer(buffer, should_debounce)
             if self.workspaces[project_path] then
                 self.workspaces[project_path].updated_at = activity_set_at
                 activity.timestamps = self.options.show_time == 1 and {
-                    start = self.workspaces[project_path].started_at,
-                } or nil
+                        start = self.workspaces[project_path].started_at,
+                    } or nil
             else
                 self.workspaces[project_path] = {
                     started_at = activity_set_at,
@@ -1042,11 +1064,11 @@ function Presence:register_and_sync_peer(id, socket)
         end
     end
 
-    self:call_remote_method(socket, "sync_self", {{
+    self:call_remote_method(socket, "sync_self", { {
         last_activity = self.last_activity,
         peers = peers,
         workspaces = self.workspaces,
-    }})
+    } })
 end
 
 -- Register self to any remote Neovim instances
@@ -1124,11 +1146,11 @@ function Presence:sync_self_activity()
             end
         end
 
-        self:call_remote_method(peer.socket, "sync_peer_activity", {{
+        self:call_remote_method(peer.socket, "sync_peer_activity", { {
             last_activity = self.last_activity,
             peers = peers,
             workspaces = self.workspaces,
-        }})
+        } })
     end
 end
 
@@ -1144,6 +1166,8 @@ function Presence:stop()
     self.discord:disconnect(function()
         self.log:info("Disconnected from Discord")
     end)
+    self.toggle_connect=false
+    self.is_connected=true
 end
 
 --------------------------------------------------
@@ -1245,5 +1269,6 @@ function Presence:handle_buf_add()
         self:update()
     end)
 end
+
 
 return Presence
