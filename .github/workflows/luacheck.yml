@@ -1,7 +1,7 @@
 name: Luacheck
 on: [push, pull_request]
 jobs:
-  sile:
+  Luacheck:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
