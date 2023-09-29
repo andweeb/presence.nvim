@@ -1,4 +1,4 @@
-name: Issue report
+name: Feature request
 description: Report any errors, bugs, or unexpected behaviors related to presence.nvim
 title: "[FEAT]: "
 labels: [enhancement]
