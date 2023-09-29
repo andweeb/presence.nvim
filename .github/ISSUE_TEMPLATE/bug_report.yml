@@ -1,47 +1,98 @@
 name: Issue report
 description: Report any errors, bugs, or unexpected behaviors related to presence.nvim
+title: "[Bug]: "
 labels: [bug]
+assignees:
+  - jiriks74
 body:
   - type: markdown
     attributes:
       value: |
         Before reporting, please search [existing issues](https://github.com/andweeb/presence.nvim/issues) and make sure that presence.nvim is updated to the latest version.
+
+  - type: checkboxes
+    attributes:
+      label: Are you on the latest version?
+      options:
+        - label: I have updated to the latest version.
+          required: true
+
+  - type: checkboxes
+    attributes:
+      label: Have you tried it with default config?
+      options:
+        - label: I have tried the default config.
+          required: true
+            
   - type: textarea
     attributes:
       label: "Description"
       description: "A short summary of the error, bug, or unexpected behavior you're facing."
     validations:
       required: true
+
   - type: textarea
     attributes:
       label: "Neovim version"
       description: "Output of `nvim --version`"
       render: markdown
       placeholder: |
-        NVIM v0.6.0-dev+209-g0603eba6e
+        NVIM: v0.6.0-dev+209-g0603eba6e
         Build type: Release
-        LuaJIT 2.1.0-beta3
+        LuaJIT: 2.1.0-beta3
+      value: |
+        NVIM:
+        Build type:
+        LuaJIT:
     validations:
       required: true
+
   - type: input
     attributes:
       label: "OS information"
       placeholder: "macOS 12.0.1"
     validations:
       required: true
+        
   - type: textarea
     attributes:
       label: "Steps to reproduce"
-      description: "Steps to reproduce the issue with your config(s) if applicable"
+      description: "Steps to reproduce the issue with your config(s) if applicable."
       placeholder: |
         1. Setup presence.nvim with `require("presence"):setup({...})`
         2. Run Neovim with `nvim test.txt`
         3. ...
     validations:
       required: true
+
   - type: textarea
     attributes:
       label: "Logs"
-      description: "The full list of `:messages` from one or more `nvim` instances"
+      description: "The full list of `:messages` from one or more `nvim` instances.\nPlease insert the logs into code blocks."
+      placeholder: |
+        <details>
+
+        ```
+        [presence.nvim] Using runtime path: /run/user/1000
+        [presence.nvim] Using Discord IPC socket path: /run/user/1000/discord-ipc-0
+        [presence.nvim] Checking Discord IPC socket at /run/user/1000/discord-ipc-0...
+        ```
+
+        </details>
+      value: |
+        <details>
+
+        ```
+
+        ```
+
+        </details>
     validations:
       required: true
+
+  - type: textarea
+    attributes:
+      label: "Aditional info"
+      description: "If you'd like to add anything else put it here."
+    validations:
+      required: false
