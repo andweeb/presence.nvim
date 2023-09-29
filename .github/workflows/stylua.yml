@@ -1,7 +1,7 @@
 name: StyLua
 on: [push, pull_request]
 jobs:
-  StyLua check:
+  StyLuacheck:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -10,6 +10,6 @@ jobs:
         uses: JohnnyMorganz/stylua-action@v3
         with:
           token: ${{ secrets.GH_TOKEN }}
-          version: v0.8.2 # NOTE: we recommend pinning to a specific version in case of formatting changes
+          version: v0.18.2 # NOTE: we recommend pinning to a specific version in case of formatting changes
           # CLI arguments
           args: --check .
