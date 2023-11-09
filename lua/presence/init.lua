@@ -455,7 +455,10 @@ end
 
 -- Get the name of the file for the given path
 function Presence.get_filename(path, path_separator)
-    return path:match(string.format("^.+%s(.+)$", path_separator))
+	local file = path:match(string.format("^.+%s(.+)$", path_separator))
+	local b_file = file and file:match("^.+:(.+)$")
+
+	return b_file or file
 end
 
 -- Get the file extension for the given filename
