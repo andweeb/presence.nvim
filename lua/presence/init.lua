@@ -455,7 +455,10 @@ end
 
 -- Get the name of the file for the given path
 function Presence.get_filename(path, path_separator)
-    return path:match(string.format("^.+%s(.+)$", path_separator))
+	local file = path:match(string.format("^.+%s(.+)$", path_separator))
+	local b_file = file and file:match("^.+:(.+)$")
+
+	return b_file or file
 end
 
 -- Get the file extension for the given filename
@@ -489,12 +492,15 @@ function Presence:get_status_text(filename)
     if not filename or filename == "" then return nil end
 
     if vim.bo.modifiable and not vim.bo.readonly then
+		self.log:debug("modify")
         if vim.bo.filetype == "gitcommit" then
+			self.log:debug("is a git")
             return self:format_status_text("git_commit", filename)
         elseif filename then
             return self:format_status_text("editing", filename)
         end
     elseif filename then
+		self.log:debug("reading")
         return self:format_status_text("reading", filename)
     end
 end
