@@ -492,15 +492,12 @@ function Presence:get_status_text(filename)
     if not filename or filename == "" then return nil end
 
     if vim.bo.modifiable and not vim.bo.readonly then
-		self.log:debug("modify")
         if vim.bo.filetype == "gitcommit" then
-			self.log:debug("is a git")
             return self:format_status_text("git_commit", filename)
         elseif filename then
             return self:format_status_text("editing", filename)
         end
     elseif filename then
-		self.log:debug("reading")
         return self:format_status_text("reading", filename)
     end
 end
