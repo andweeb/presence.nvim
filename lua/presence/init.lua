@@ -92,6 +92,11 @@ function Presence:setup(...)
     local separator = package.config:sub(1,1)
     local wsl_distro_name = os.getenv("WSL_DISTRO_NAME")
     local os_name = self.get_os_name(uname)
+    
+    if os_name == "mingw" then
+        separator = "/"
+    end
+
     self.os = {
         name = os_name,
         is_wsl = uname.release:lower():find("microsoft") ~= nil,
@@ -187,6 +192,8 @@ function Presence.get_os_name(uname)
         return "macos"
     elseif uname.sysname:find("Linux") then
         return "linux"
+    elseif uname.sysname:find("MINGW") then
+        return "mingw"
     end
 
     return "unknown"
@@ -370,7 +377,7 @@ function Presence:get_discord_socket_path()
     if self.os.is_wsl then
         -- Use socket created by relay for WSL
         sock_path = "/var/run/"..sock_name
-    elseif self.os.name == "windows" then
+    elseif self.os.name == "windows" or self.os.name == "mingw" then
         -- Use named pipe in NPFS for Windows
         sock_path = [[\\.\pipe\]]..sock_name
     elseif self.os.name == "macos" then
@@ -441,7 +448,7 @@ function Presence:get_project_name(file_path)
     end
 
     -- Since git always uses forward slashes, replace with backslash in Windows
-    if self.os.name == "windows" then
+    if self.os.name == "windows" or self.os.name == "mingw" then
         project_path = project_path:gsub("/", [[\]])
     end
 
@@ -517,7 +524,7 @@ function Presence:get_nvim_socket_paths(on_done)
             "-c",
             shell_cmd,
         }
-    elseif self.os.name == "windows" then
+    elseif self.os.name == "windows" or self.os.name == "mingw" then
         cmd = {
             "powershell.exe",
             "-Command",
