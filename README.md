@@ -18,6 +18,14 @@
 Use your favorite plugin manager
 * [vim-plug](https://github.com/junegunn/vim-plug): `Plug 'andweeb/presence.nvim'`
 * [packer.nvim](https://github.com/wbthomason/packer.nvim): `use 'andweeb/presence.nvim'`
+* [lazy.nvim](https://github.com/folke/lazy.nvim):
+```lua
+{
+    'andweeb/presence.nvim',
+    -- As to why this requires VeryLazy, see this issue comment: https://github.com/andweeb/presence.nvim/issues/116#issuecomment-1610596444
+    event = 'VeryLazy'
+}
+```
 
 #### Notes
 * Requires [Neovim 0.5](https://github.com/neovim/neovim/releases/tag/v0.5.0) or higher
