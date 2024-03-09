@@ -239,6 +239,7 @@ return {
     sh = { "Shell script", "shell" },
     shrc = { "Shell config", "shell" },
     snap = { "Jest Snapshot", "jest" },
+    sol = {"solidity", "https://docs.soliditylang.org/en/latest/_images/solidity_logo.svg"},
     sql = { "SQL", "database" },
     ss = { "Scheme", "scheme" },
     svelte = { "Svelte", "svelte" },
